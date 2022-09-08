@@ -1,5 +1,5 @@
 #*
-#*Upper diagonal matrix return forms
+#*Upper diagonal matrix return forms (use sparseMatrix())
 #*
 #*Additional return info
 #*
