@@ -22,3 +22,5 @@ Config/testthat/edition: 3
 Imports: 
     stats,
     survival
+URL: https://github.com/luckylluck2/twostageGWASsurvival
+BugReports: https://github.com/luckylluck2/twostageGWASsurvival/issues
