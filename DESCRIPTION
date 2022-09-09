@@ -1,6 +1,6 @@
 Package: twostageGWASsurvival
 Title: Implements a Two Stage Method for Detecting Epistasis in GWAS for Survival Data
-Version: 0.0.2.02
+Version: 0.0.3.01
 Authors@R: 
     person("Luc", "van Schijndel", , "lcvsch@hotmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-1549-7705"))

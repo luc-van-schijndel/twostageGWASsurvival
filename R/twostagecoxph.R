@@ -8,6 +8,8 @@
 #' @param multicore Currently unused
 #' @param report.lowest.amount integer scalar denoting how many of the most significant interactions
 #'                               the function should report
+#' @param return.raw logical, default FALSE; whether or not the output should contain the raw p-values or
+#'                     the multiple hypotheses corrected p-values.
 #'
 #' @return Hopefully a nicely structured list of some kind?
 #' @export
@@ -31,7 +33,7 @@
 #' twostagecoxph(survival.dataset, covariate.matrix)
 twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold = 0.05,
                           multiple.hypotheses.correction = "bonferroni", multicore = FALSE,
-                          report.lowest.amount = 10){
+                          report.lowest.amount = 5, return.raw = FALSE){
   if(!survival::is.Surv(survival.dataset)) stop("survival.dataset must be a Surv object")
   if(!is.matrix(covariate.matrix)) stop("covariate.matrix must be a (strict) matrix")
 
@@ -46,6 +48,14 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   if(!is.numeric(first.stage.threshold)) stop("first.stage.threshold must be numeric")
   if(length(first.stage.threshold) != 1) stop("first.stage.threshold must be of length 1")
   if(first.stage.threshold > 1 || first.stage.threshold < 0) stop("first.stage.threshold must be in the interval [0,1]")
+  if(first.stage.threshold == 1) stop("first.stage.threshold is 1, consider decreasing this. The two stage method is not suitable for this.")
+  if(first.stage.threshold == 0){
+    if(stats::runif(1) < 0.5) {
+      stop("first.stage.threshold is 0, consider increasing this. The two stage method is not suitable for this. \n     'None Shall Pass!' - The Black Knight")
+    } else
+      stop("first.stage.threshold is 0, consider increasing this. The two stage method is not suitable for this. \n     'You Shall Not Pass!' - Gandalf the Grey")
+  }
+
 
   if(multicore != FALSE) stop("Package currently does not support parallel processing")
 
@@ -53,22 +63,54 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
     warning("report.lowest.amount must be non-negative integer. Rounding up to non-negative integer")
 
   if(multicore == FALSE){
-    return(singlecore.twostagecoxph(survival.dataset, covariate.matrix,
-                                    first.stage.threshold, multiple.hypotheses.correction,
-                                    report.lowest.amount))
+    ts.output <-singlecore.twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold)
   }
+
+  if(!return.raw){
+    ts.output$second.stage.sparse.matrix@x <- stats::p.adjust(ts.output$second.stage.sparse.matrix@x, method = multiple.hypotheses.correction)
+  }
+
+
+  report.lowest.amount = min(report.lowest.amount, length(ts.output$second.stage.sparse.matrix@x))
+
+  fifth.lowest <- stats::quantile(ts.output$second.stage.sparse.matrix@x, probs = report.lowest.amount/length(ts.output$second.stage.sparse.matrix@x))
+  indices.lowest.five <- Matrix::which(ts.output$second.stage.sparse.matrix < fifth.lowest & ts.output$second.stage.sparse.matrix > 0,
+                                      arr.ind = TRUE)
+  lowest.five <- ts.output$second.stage.sparse.matrix[indices.lowest.five]
+  attr(lowest.five, "names") = c(apply(Matrix::which(ts.output$second.stage.sparse.matrix < fifth.lowest & ts.output$second.stage.sparse.matrix > 0, arr.ind = TRUE),
+                                      1, function(.) paste0(., collapse = " x ")))
+
+  return.object <- list(most.significant.results = sort(lowest.five),
+                        marginal.significant = ts.output$passed.indices,
+                        p.value.matrix = ts.output$second.stage.sparse.matrix)
+  class(return.object) <- "twostageGWAS"
+
+  return.object
 
 
 }
 
 
-singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
-                                     multiple.hypotheses.correction = "bonferroni", report.lowest.amount){
+#' Two stage method using single core
+#'
+#' @param survival.dataset the dataset
+#' @param covariate.matrix the covariates
+#' @param first.stage.threshold the fst
+#'
+#' @return a sparseMatrix object
+#'
+#'
+#' @examples
+#' print("make exmple")
+singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold){
   first.stage.result <- firststagecoxph(survival.dataset, covariate.matrix)
 
   first.stage.rejections <- (first.stage.result < first.stage.threshold)
   passed.indices <- which(first.stage.rejections == TRUE)
   amount.rejections <- sum(first.stage.rejections)
+
+  if(amount.rejections == 0) stop("No rejections in the first stage")
+  if(amount.rejections == 1) stop("Only one rejection in the first stage")
 
   relevant.indices <- utils::combn(passed.indices, 2)
   second.stage.sparse.matrix <- Matrix::sparseMatrix(i = relevant.indices[1,], relevant.indices[2,],
@@ -86,24 +128,9 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
     }
   }
 
-  corrected.p.values <- stats::p.adjust(second.stage.sparse.matrix@x, method = multiple.hypotheses.correction)
-  corrected.sparse.matrix <- second.stage.sparse.matrix
-  corrected.sparse.matrix@x <- corrected.p.values
-
-  report.lowest.amount = min(report.lowest.amount, length(corrected.p.values))
-
-  tenth.lowest <- stats::quantile(corrected.p.values, probs = report.lowest.amount/length(corrected.p.values))
-  indices.lowest.ten <- Matrix::which(corrected.sparse.matrix < tenth.lowest & corrected.sparse.matrix > 0,
-                                       arr.ind = TRUE)
-  lowest.ten <- corrected.sparse.matrix[indices.lowest.ten]
-  attr(lowest.ten, "names") = c(apply(Matrix::which(corrected.sparse.matrix < tenth.lowest & corrected.sparse.matrix > 0, arr.ind = TRUE),
-                                      1, function(.) paste0(., collapse = " x ")))
-
-
-  return(list(most.significant.results = lowest.ten,
-              raw.p.value.sparse.matrix = second.stage.sparse.matrix,
-              corrected.p.value.sparse.matrix = corrected.sparse.matrix))
+  return(list(second.stage.sparse.matrix = second.stage.sparse.matrix, passed.indices = passed.indices))
 }
+
 
 
 firststagecoxph <- function(survival.dataset, covariate.matrix){
@@ -116,4 +143,17 @@ firststagecoxph <- function(survival.dataset, covariate.matrix){
   return(p.value.vector)
 }
 
-
+#' Print method for twostage object
+#'
+#' @param x the object
+#' @param ... passed
+#'
+#' @return the twostage object
+#' @export
+#'
+#' @examples
+#' print("example")
+print.twostageGWAS <- function(x, ...){
+  cat("Print twostagecoxph")
+  invisible(x)
+}

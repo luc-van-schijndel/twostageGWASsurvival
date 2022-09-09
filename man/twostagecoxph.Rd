@@ -10,7 +10,8 @@ twostagecoxph(
   first.stage.threshold = 0.05,
   multiple.hypotheses.correction = "bonferroni",
   multicore = FALSE,
-  report.lowest.amount = 10
+  report.lowest.amount = 5,
+  return.raw = FALSE
 )
 }
 \arguments{
@@ -27,6 +28,9 @@ has a p-value lower than this threshold, it will be passed on to the second stag
 
 \item{report.lowest.amount}{integer scalar denoting how many of the most significant interactions
 the function should report}
+
+\item{return.raw}{logical, default FALSE; whether or not the output should contain the raw p-values or
+the multiple hypotheses corrected p-values.}
 }
 \value{
 Hopefully a nicely structured list of some kind?

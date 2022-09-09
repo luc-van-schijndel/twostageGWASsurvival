@@ -1,5 +1,4 @@
 #*
-#*Upper diagonal matrix return forms (use sparseMatrix())
 #*
 #*Additional return info
 #*
@@ -18,3 +17,7 @@
 #*Consider removing the corrected spars
 #*
 #*Update documentation to match standard style: "data type"  "thing it determines in method"
+#*
+#*Give print method proper lay-out and structure (and documentation)
+#*
+#*implement ETA returning
