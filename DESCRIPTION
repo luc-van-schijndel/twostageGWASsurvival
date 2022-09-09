@@ -1,6 +1,6 @@
 Package: twostageGWASsurvival
 Title: Implements a Two Stage Method for Detecting Epistasis in GWAS for Survival Data
-Version: 0.0.1.01
+Version: 0.0.2.01
 Authors@R: 
     person("Luc", "van Schijndel", , "lcvsch@hotmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-1549-7705"))
@@ -21,6 +21,7 @@ Suggests:
 Config/testthat/edition: 3
 Imports: 
     stats,
-    survival
+    survival,
+    utils
 URL: https://github.com/luckylluck2/twostageGWASsurvival
 BugReports: https://github.com/luckylluck2/twostageGWASsurvival/issues

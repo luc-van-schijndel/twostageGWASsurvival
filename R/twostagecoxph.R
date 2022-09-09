@@ -6,6 +6,8 @@
 #'          has a p-value lower than this threshold, it will be passed on to the second stage.
 #' @param multiple.hypotheses.correction Correction method, a character string. Passed to stats::p.adjust
 #' @param multicore Currently unused
+#' @param report.lowest.amount integer scalar denoting how many of the most significant interactions
+#'                               the function should report
 #'
 #' @return Hopefully a nicely structured list of some kind?
 #' @export
@@ -28,7 +30,8 @@
 #'                            nrow = 10, ncol = 3, byrow = TRUE)
 #' twostagecoxph(survival.dataset, covariate.matrix)
 twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold = 0.05,
-                          multiple.hypotheses.correction = "bonferroni", multicore = FALSE){
+                          multiple.hypotheses.correction = "bonferroni", multicore = FALSE,
+                          report.lowest.amount = 10){
   if(!survival::is.Surv(survival.dataset)) stop("survival.dataset must be a Surv object")
   if(!is.matrix(covariate.matrix)) stop("covariate.matrix must be a (strict) matrix")
 
@@ -46,6 +49,9 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 
   if(multicore != FALSE) stop("Package currently does not support parallel processing")
 
+  if(abs(report.lowest.amount - round(report.lowest.amount)) > .Machine$double.eps^0.5 || report.lowest.amount < 1)
+    warning("report.lowest.amount must be non-negative integer. Rounding up to non-negative integer")
+
   if(multicore == FALSE){
     return(singlecore.twostagecoxph(survival.dataset, covariate.matrix,
                                     first.stage.threshold, multiple.hypotheses.correction))
@@ -55,15 +61,17 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 }
 
 
-singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold, multiple.hypotheses.correction){
+singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
+                                     multiple.hypotheses.correction = "bonferroni"){
   first.stage.result <- firststagecoxph(survival.dataset, covariate.matrix)
 
   first.stage.rejections <- (first.stage.result < first.stage.threshold)
   passed.indices <- which(first.stage.rejections == TRUE)
   amount.rejections <- sum(first.stage.rejections)
 
-  second.stage.result.matrix <- matrix(1, nrow = amount.rejections, ncol = amount.rejections,
-                                       dimnames = list(passed.indices, passed.indices))
+  relevant.indices <- utils::combn(passed.indices, 2)
+  second.stage.sparse.matrix <- Matrix::sparseMatrix(i = relevant.indices[1,], relevant.indices[2,],
+                                             x = 1, triangular = TRUE)
   for (first.index in 1:(amount.rejections-1)){
     for (second.index in (first.index+1):amount.rejections){
       index.first.covariate  <- passed.indices[first.index]
@@ -72,17 +80,17 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
       covariate.two <- covariate.matrix[, index.second.covariate]
 
       fitted.model <- survival::coxph(survival.dataset ~ covariate.one * covariate.two)
-      second.stage.result.matrix[first.index, second.index] <- summary(fitted.model)$coefficients[3,5]
+      second.stage.sparse.matrix[index.first.covariate, index.second.covariate] <-
+        summary(fitted.model)$coefficients[3,5]
     }
   }
 
-  corrected.p.values <- stats::p.adjust(second.stage.result.matrix[upper.tri(second.stage.result.matrix)],
-                                        method = multiple.hypotheses.correction)
-  corrected.result.matrix <- second.stage.result.matrix
-  corrected.result.matrix[upper.tri(corrected.result.matrix)] <- corrected.p.values
+  corrected.p.values <- stats::p.adjust(second.stage.sparse.matrix@x, method = multiple.hypotheses.correction)
+  corrected.sparse.matrix <- second.stage.sparse.matrix
+  corrected.sparse.matrix@x <- corrected.p.values
 
-  return(list(raw.p.value.matrix = second.stage.result.matrix,
-              corrected.p.value.matrix = corrected.result.matrix))
+  return(list(raw.p.value.sparse.matrix = second.stage.sparse.matrix,
+              corrected.p.value.sparse.matrix = corrected.sparse.matrix))
 }
 
 

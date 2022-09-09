@@ -21,6 +21,7 @@ test_that("Wrong input objects give errors", {
                                0,0,0),
                              nrow = 10, ncol = 3, byrow = TRUE)
   expect_warning(twostagecoxph(survival.dataset, t(covariate.matrix)), "Transposed")
+  expect_warning(twostagecoxph(survival.dataset, covariate.matrix, report.lowest.amount = 9.5), "integer")
 
 })
 
@@ -69,15 +70,15 @@ test_that("Outputs are the p-values we expect", {
   #(c(summary(survival::coxph(survival.dataset ~ covariate.matrix[,1]*covariate.matrix[,2]))$coef[3,5],
   #   summary(survival::coxph(survival.dataset ~ covariate.matrix[,1]*covariate.matrix[,3]))$coef[3,5],
   #   summary(survival::coxph(survival.dataset ~ covariate.matrix[,2]*covariate.matrix[,3]))$coef[3,5]))
-  expect_equal(output[[1]], matrix(c(1, 0.29283645, 0.76400342,
-                                     1, 1,          0.09613708,
-                                     1, 1,          1),
-                                   nrow = 3, ncol = 3, byrow = TRUE, dimnames = list(1:3, 1:3)),
+  expect_equal(output$raw.p.value.sparse.matrix,
+               Matrix::sparseMatrix(i = c(1,1,2), j = c(2,3,3),
+                                    x = c(0.29283645, 0.76400342, 0.09613708),
+                                    triangular = TRUE),
                tolerance = 1e-7)
   #3x the previous (maximum 1)
-  expect_equal(output[[2]], matrix(c(1, 0.8785094, 1,
-                                     1, 1,         0.2884112,
-                                     1, 1,         1),
-                                   nrow = 3, ncol = 3, byrow = TRUE, dimnames = list(1:3, 1:3)),
+  expect_equal(output$corrected.p.value.sparse.matrix,
+               Matrix::sparseMatrix(i = c(1,1,2), j = c(2,3,3),
+                                    x = c(0.8785094, 1, 0.2884112),
+                                    triangular = TRUE),
                tolerance = 1e-7)
 })
