@@ -9,3 +9,5 @@
 #*str(M)
 #*M
 #*p.adjust(M@x)
+#*
+#*attr(lowest, "interaction name") = c(apply(Matrix::which(A < 20 & A > 0, arr.ind = TRUE),1, paste0(., collapse = "x")))

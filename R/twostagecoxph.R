@@ -54,7 +54,8 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 
   if(multicore == FALSE){
     return(singlecore.twostagecoxph(survival.dataset, covariate.matrix,
-                                    first.stage.threshold, multiple.hypotheses.correction))
+                                    first.stage.threshold, multiple.hypotheses.correction,
+                                    report.lowest.amount))
   }
 
 
@@ -62,7 +63,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 
 
 singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
-                                     multiple.hypotheses.correction = "bonferroni"){
+                                     multiple.hypotheses.correction = "bonferroni", report.lowest.amount){
   first.stage.result <- firststagecoxph(survival.dataset, covariate.matrix)
 
   first.stage.rejections <- (first.stage.result < first.stage.threshold)
@@ -89,7 +90,18 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
   corrected.sparse.matrix <- second.stage.sparse.matrix
   corrected.sparse.matrix@x <- corrected.p.values
 
-  return(list(raw.p.value.sparse.matrix = second.stage.sparse.matrix,
+  report.lowest.amount = min(report.lowest.amount, length(corrected.p.values))
+
+  tenth.lowest <- stats::quantile(corrected.p.values, probs = report.lowest.amount/length(corrected.p.values))
+  indices.lowest.ten <- Matrix::which(corrected.sparse.matrix < tenth.lowest & corrected.sparse.matrix > 0,
+                                       arr.ind = TRUE)
+  lowest.ten <- corrected.sparse.matrix[indices.lowest.ten]
+  attr(lowest.ten, "names") = c(apply(Matrix::which(corrected.sparse.matrix < tenth.lowest & corrected.sparse.matrix > 0, arr.ind = TRUE),
+                                      1, function(.) paste0(., collapse = " x ")))
+
+
+  return(list(most.significant.results = lowest.ten,
+              raw.p.value.sparse.matrix = second.stage.sparse.matrix,
               corrected.p.value.sparse.matrix = corrected.sparse.matrix))
 }
 
