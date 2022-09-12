@@ -2,7 +2,7 @@
 % Please edit documentation in R/twostagecoxph.R
 \name{twostagecoxph}
 \alias{twostagecoxph}
-\title{Perform a two stage analysis on a survival dataset to detect epistasis}
+\title{(WIP) Perform a two stage analysis on a survival dataset to detect epistasis}
 \usage{
 twostagecoxph(
   survival.dataset,
@@ -11,7 +11,8 @@ twostagecoxph(
   multiple.hypotheses.correction = "bonferroni",
   multicore = FALSE,
   report.lowest.amount = 5,
-  return.raw = FALSE
+  return.raw = FALSE,
+  progress = 1000
 )
 }
 \arguments{
@@ -31,12 +32,15 @@ the function should report}
 
 \item{return.raw}{logical, default FALSE; whether or not the output should contain the raw p-values or
 the multiple hypotheses corrected p-values.}
+
+\item{progress}{numeric, default 1000;  how many iterations should pass silently until an update is given
+about runtime and progress until completion of stages. Set to 0 for no output.}
 }
 \value{
 Hopefully a nicely structured list of some kind?
 }
 \description{
-Perform a two stage analysis on a survival dataset to detect epistasis
+Work in progress. Only the most basic functionality works.
 }
 \note{
 Parallel processing is currently not supported
@@ -55,5 +59,8 @@ covariate.matrix <- matrix(c(2,2,1,
                              1,0,0,
                              0,0,0),
                            nrow = 10, ncol = 3, byrow = TRUE)
-twostagecoxph(survival.dataset, covariate.matrix)
+twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
+}
+\seealso{
+print.twostageGWAS()
 }

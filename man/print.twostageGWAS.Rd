@@ -4,19 +4,32 @@
 \alias{print.twostageGWAS}
 \title{Print method for twostage object}
 \usage{
-\method{print}{twostageGWAS}(x, ...)
+\method{print}{twostageGWAS}(twostageGWASobject, ...)
 }
 \arguments{
-\item{x}{the object}
+\item{twostageGWASobject}{object of class twostageGWAS}
 
-\item{...}{passed}
+\item{...}{optional arguments to print methods}
 }
 \value{
-the twostage object
+The twostageGWAS object invisibly
 }
 \description{
 Print method for twostage object
 }
 \examples{
-print("example")
+survival.dataset <- survival::Surv(c(5,5,3,3,2,2,2,1,1,1),
+                                   c(0,0,1,1,1,1,1,1,1,1))
+covariate.matrix <- matrix(c(2,2,1,
+                             2,2,1,
+                             1,2,1,
+                             2,1,1,
+                             1,1,1,
+                             1,1,1,
+                             1,0,0,
+                             0,1,0,
+                             1,0,0,
+                             0,0,0),
+                           nrow = 10, ncol = 3, byrow = TRUE)
+twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
 }

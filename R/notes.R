@@ -11,3 +11,11 @@
 #*p.adjust(M@x)
 #*
 #*attr(lowest, "interaction name") = c(apply(Matrix::which(A < 20 & A > 0, arr.ind = TRUE),1, paste0(., collapse = "x")))
+#*for(i in 1:10){
+#*cat("\r", i, proc.time())
+#*utils::flush.console()
+#*Sys.sleep(1)
+#*}
+
+
+

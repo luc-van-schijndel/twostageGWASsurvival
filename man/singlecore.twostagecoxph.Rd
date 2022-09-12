@@ -7,7 +7,8 @@
 singlecore.twostagecoxph(
   survival.dataset,
   covariate.matrix,
-  first.stage.threshold
+  first.stage.threshold,
+  progress = 50
 )
 }
 \arguments{
