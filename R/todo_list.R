@@ -1,14 +1,17 @@
 #*
 #*
-#*Additional return info
+#*Additional return info (D, I think? No more can be reasonably added?)
 #*
-#*large dataset
+#*large dataset. Make good example from this.
 #*
-#*Non-convergence checks
+#*Non-convergence checks (partiall done?)
 #*
 #*Edge-case handling
 #*
 #*Coxph properly calling
+#*Requires a lot of manual setting of parameters. Not worth the effort I think.
+#*
+#*Document datasets
 #*
 #*Parallel computing
 #*

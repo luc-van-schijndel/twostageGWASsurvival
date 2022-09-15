@@ -4,12 +4,12 @@
 \alias{print.twostageGWAS}
 \title{Print method for twostage object}
 \usage{
-\method{print}{twostageGWAS}(twostageGWASobject, ...)
+\method{print}{twostageGWAS}(x, ...)
 }
 \arguments{
-\item{twostageGWASobject}{object of class twostageGWAS}
+\item{x}{object of class twostageGWAS}
 
-\item{...}{optional arguments to print methods}
+\item{...}{optional arguments passed on to cat and print.default functions.}
 }
 \value{
 The twostageGWAS object invisibly

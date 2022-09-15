@@ -12,7 +12,8 @@ twostagecoxph(
   multicore = FALSE,
   report.lowest.amount = 5,
   return.raw = FALSE,
-  progress = 1000
+  progress = 1000,
+  max.coef = 5
 )
 }
 \arguments{
@@ -35,6 +36,10 @@ the multiple hypotheses corrected p-values.}
 
 \item{progress}{numeric, default 1000;  how many iterations should pass silently until an update is given
 about runtime and progress until completion of stages. Set to 0 for no output.}
+
+\item{max.coef}{numeric, default 5; maximum value for all coefficients in the fitted models. If any
+are larger than this (in absolute value), then the model rejected and ignored in
+further analysis.}
 }
 \value{
 Hopefully a nicely structured list of some kind?
@@ -60,6 +65,14 @@ covariate.matrix <- matrix(c(2,2,1,
                              0,0,0),
                            nrow = 10, ncol = 3, byrow = TRUE)
 twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
+
+## Not run:
+#load("data/example_survival_data.rda")
+#load("data/example_snp_data.rda")
+#str(example_survival_data)
+#str(example_snp_data)
+#foo <- twostagecoxph(example_survival_data, example_snp_data, first.stage.threshold = 1e-5)
+## End(Not run)
 }
 \seealso{
 print.twostageGWAS()

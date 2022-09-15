@@ -16,6 +16,12 @@
 #*utils::flush.console()
 #*Sys.sleep(1)
 #*}
-
-
+#*dim = 10
+#*print("test")
+#*for(i in 1:(dim-1)){
+#*  for(j in (i+1):dim){
+#*      #print(c(dim*(dim-1)/2 - (dim-i)*(dim-i-1)/2 - (dim-j), dim-i, dim-j))
+#*          print(c(dim*(i-1) + j - i*(i+1)/2  )/(dim*(dim-1)/2))
+#*      }
+#*    }
 
