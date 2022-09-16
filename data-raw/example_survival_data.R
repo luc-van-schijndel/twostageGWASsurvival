@@ -1,4 +1,4 @@
-## code to prepare `DATASET` dataset goes here
+## code to prepare `example_survival_data` dataset goes here
 
 load("data/example_snp_data.rda") #"example.snp.data"
 example.snp.data <- read.table("data-raw/s1_gendat.txt", header = TRUE)[,1:3000]

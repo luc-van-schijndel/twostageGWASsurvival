@@ -1,6 +1,6 @@
 Package: twostageGWASsurvival
 Title: Implements a Two Stage Method for Detecting Epistasis in GWAS for Survival Data
-Version: 0.1.0.01
+Version: 0.1.0.03
 Authors@R: 
     person("Luc", "van Schijndel", , "lcvsch@hotmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-1549-7705"))
@@ -15,13 +15,15 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.1
 Suggests: 
+    doParallel,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Imports: 
     stats,
-    survival,
     utils,
-    Matrix
+    Matrix,
+    survival,
+    foreach
 URL: https://github.com/luckylluck2/twostageGWASsurvival
 BugReports: https://github.com/luckylluck2/twostageGWASsurvival/issues
 Depends: 

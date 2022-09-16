@@ -13,7 +13,10 @@ twostagecoxph(
   report.lowest.amount = 5,
   return.raw = FALSE,
   progress = 1000,
-  max.coef = 5
+  max.coef = 5,
+  max.batchsize = 1000,
+  updatefile = "",
+  upper.bound.correlation = 0.95
 )
 }
 \arguments{
@@ -40,9 +43,21 @@ about runtime and progress until completion of stages. Set to 0 for no output.}
 \item{max.coef}{numeric, default 5; maximum value for all coefficients in the fitted models. If any
 are larger than this (in absolute value), then the model rejected and ignored in
 further analysis.}
+
+\item{max.batchsize}{maximum size of one batch, default 1000; for parallel computing,
+should be lowered if issues arise concerning memory. Can be raised
+to slightly increase performance}
+
+\item{updatefile}{path to a text file where updates may be written. Necessary for parallel
+computations, since the connection to the terminal will be lost. This
+file will serve as a stand in for the terminal.}
+
+\item{upper.bound.correlation}{numeric; the upper bound on the correlation between two
+covariates. If exceeded (in absolute value), the model
+is not fitted.}
 }
 \value{
-Hopefully a nicely structured list of some kind?
+a twostageGWAS object; a list of 5 entries: stuff
 }
 \description{
 Work in progress. Only the most basic functionality works.

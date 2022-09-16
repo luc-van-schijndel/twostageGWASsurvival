@@ -24,4 +24,10 @@
 #*          print(c(dim*(i-1) + j - i*(i+1)/2  )/(dim*(dim-1)/2))
 #*      }
 #*    }
-
+#*    cbz <- function(max, covs, cores = 2){
+#*    (intermediate.bz <- min(ceiling(covs/cores), max))
+#*    (intermediate.nb <- ceiling(covs/intermediate.bz))
+#*    (final.nb <- ceiling(intermediate.nb/cores)*cores)
+#*    return(ceiling(covs/final.nb))
+#*    #return(ceiling(covs/ceiling(ceiling(covs/min(ceiling(covs/cores), max))/cores)*cores))
+#*    }

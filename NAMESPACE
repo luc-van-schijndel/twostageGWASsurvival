@@ -2,3 +2,5 @@
 
 S3method(print,twostageGWAS)
 export(twostagecoxph)
+importFrom(foreach,"%dopar%")
+importFrom(survival,coxph)
