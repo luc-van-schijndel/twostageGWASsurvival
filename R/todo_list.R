@@ -1,4 +1,4 @@
-#*
+#*check new implementation of multicore.first stage
 #*
 #*Additional return info (D, I think? No more can be reasonably added?)
 #*

@@ -91,6 +91,8 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   if(abs(report.lowest.amount - round(report.lowest.amount)) > .Machine$double.eps^0.5 || report.lowest.amount < 1)
     warning("report.lowest.amount must be non-negative integer. Rounding up to non-negative integer")
 
+  if(max.batchsize < 2) stop("max.batchsize must be 2 or greater.")
+
 
   if(progress == 0) progress = FALSE
 
@@ -168,6 +170,35 @@ convergence.check <- function(coxph.model, max.coef = 5){
 }
 
 
+#' Calculates the optimal batch configuration
+#'
+#' @param no.covariates number of covariates to distribute
+#' @param max.batchsize upper limit on amount covariates in each batch
+#' @param no.workers number of workers
+#'
+#' @return a list of size 3, containing the number of covariates in each batch, the number of batches
+#' (including possible empty ones at the end, this way it always is a multiple of no.workers), and a vector of batchsizes for the last iteration (excluding trailing zeros)
+#' @export
+#'
+#' @details configures this in such a way that the number of covariates does not exceed the
+#' allowed maximum, while having each batch filled equally (not necessarily full). The last batch
+#' may be not fully filled. Made for the first stage, but easily adaptible to the second stage.
+optimal.batch.configuration <- function(no.covariates, max.batchsize, no.workers = 1){
+  intermediate.no.batches <- min(ceiling(no.covariates/no.workers), max.batchsize)
+  intermediate.batchsize <- ceiling(no.covariates/intermediate.no.batches)
+  final.iters <- ceiling(intermediate.batchsize/no.workers)
+  final.no.batches <- final.iters*no.workers
+  final.batchsize <- ceiling(no.covariates/final.no.batches)
+
+  last.iter.covs <- no.covariates - final.batchsize*(final.iters-1)*no.workers
+  last.batchsize <- ceiling(last.iter.covs/no.workers)
+  last.no.full.batches <- ceiling(last.iter.covs/last.batchsize - 1)
+  last.partial.batch <- last.iter.covs - last.batchsize*last.no.full.batches
+
+  return(list(optimal.batchsize = final.batchsize, optimal.no.batches = final.no.batches,
+              last.batchsizes = c(rep(last.batchsize, last.no.full.batches), last.partial.batch)))
+}
+
 singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
                                      progress = 50, max.coef = 5, upper.bound.correlation = 0.95){
   first.stage.result <- firststagecoxph(survival.dataset, covariate.matrix, progress, max.coef)
@@ -241,6 +272,32 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
 
 
 
+#' Multicore method of performing the second stage
+#'
+#' @param survival.dataset the outcome data
+#' @param covariate.matrix The SNPs
+#' @param first.stage.threshold the FST
+#' @param progress set to 0 for no updates
+#' @param max.coef maximum value of fitted weights before declared non-converged
+#' @param updatefile path to that file
+#' @param max.batchsize max number of covariates in one batch
+#' @param upper.bound.correlation upper bound on the correlation before not checked
+#'
+#' @return list of p-value matrix, first stage p-values and which ones passed.
+#'
+#' @details Similarly to the multicore method of the first stage, this function works with
+#'   batches of covariates to alleviate possible memory issues. The optimal size of the batches
+#'   is calculated in a similar fashion as during the first stage, only here we halve the maximum
+#'   batchsize, since (almost always) two batches of covariates will be in memory at the same time.
+#'
+#'   The testing for interactions is done in a first-in, last-out approach. The first batch of
+#'   covariates will be tested for interactions with itself, then for with all covariates from
+#'   subsequent batches. The second batch does not need to test for interactions with the first one,
+#'   since the first one already did that. This allows the second batch to be done before the first one,
+#'   hence the "first-in, last-out" naming. The number of batches will always be a multiple of
+#'   two times the number of worker cores; this should ensure that all workers should be done
+#'   at the same time.
+#'
 multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
                                      progress = 50, max.coef = 5, updatefile = "", max.batchsize = 1000,
                                     upper.bound.correlation){
@@ -263,9 +320,12 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
                                                      x = 1, triangular = TRUE)
 
   no.workers <- foreach::getDoParWorkers()
-  optimal.batchsize <- ceiling(amount.rejections/ceiling(ceiling(amount.rejections/min(ceiling(amount.rejections/no.workers/2), max.batchsize))/no.workers)*no.workers)
+  optimal.batchsize <- ceiling(amount.rejections/(ceiling(ceiling(amount.rejections/min(ceiling(amount.rejections/no.workers/2), max.batchsize/2))/no.workers)*no.workers))
+  optimal.no.batches <- ceiling(amount.rejections/optimal.batchsize)
 
   start.time.second.stage <- proc.time()[3]
+
+  output.matrix <- foreach::foreach(first.batch.index = 1:optimal.no.batches)
   for (first.index in 1:(amount.rejections-1)){
     for (second.index in (first.index+1):amount.rejections){
       index.first.covariate  <- passed.indices[first.index]
@@ -392,11 +452,14 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
 
   no.covariates <- dim(covariate.matrix)[2]
   no.workers <- foreach::getDoParWorkers()
-  #the following line seems like magic, and it kinda is, but it works. See Details of docs
-  optimal.batchsize <- ceiling(no.covariates / ceiling(ceiling(no.covariates / min(ceiling(no.covariates / no.workers), max.batchsize)) / no.workers) * no.workers)
+  optimal.batchconf <- optimal.batch.configuration(no.covariates, max.batchsize, no.workers)
 
-  no.processes <- ceiling(no.covariates/optimal.batchsize)
-  matrix.indices.processes <- matrix(c(seq_len(no.covariates), rep(NA, no.processes*optimal.batchsize - no.covariates)), ncol = no.processes, nrow = optimal.batchsize)
+  optimal.batchsize <- optimal.batchconf$optimal.batchsize
+  no.processes <- optimal.batchconf$optimal.no.batches
+  batchsizes.vector <- c(rep(optimal.batchsize, no.processes - no.workers), optimal.batchconf$last.batchsizes)
+  matrix.indices.processes <- matrix(c(seq_len(sum(batchsizes.vector)), rep(NA, no.workers - length(optimal.batchconf$last.batchsizes))),
+                                     ncol = length(batchsizes.vector),
+                                     nrow = optimal.batchsize)
 
   process.index <- NULL #suppressing a note from devtools::check()
   p.value.vector <- foreach::foreach(process.index = seq_len(no.processes),

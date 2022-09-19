@@ -157,8 +157,38 @@ test_that("(Multicore) first stage gives proper output", {
   names(expected.output) <- c("1", "2", "3")
 
   expect_length(first.stage.output, 3)
-  expect_lt(first.stage.output[1], 1)
-  expect_gt(first.stage.output[1], 0)
+  expect_lt(max(first.stage.output), 1)
+  expect_gt(min(first.stage.output), 0)
   expect_equal(first.stage.output[c("1", "2", "3")], expected.output,
                tolerance = 1e-7)
+})
+
+#optimal batch configuration tests================
+
+test_that("Optimal batch configuration calculations are right", {
+  #For first stage (normal):
+
+  #When restrictions are not a problem:
+  expect_equal(optimal.batch.configuration(no.covariates = 10, max.batchsize = 1000, no.workers = 2),
+               list(optimal.batchsize = 5, optimal.no.batches = 2, last.batchsizes = c(5,5)))
+  expect_equal(optimal.batch.configuration(no.covariates = 20, max.batchsize = 1000, no.workers = 3),
+               list(optimal.batchsize = 7, optimal.no.batches = 3, last.batchsizes = c(7,7,6)))
+  expect_equal(optimal.batch.configuration(no.covariates = 30, max.batchsize = 1000, no.workers = 32),
+               list(optimal.batchsize = 1, optimal.no.batches = 32, last.batchsizes = rep(1,30)))
+
+  #When restrictions are a problem:
+  expect_equal(optimal.batch.configuration(no.covariates = 50, max.batchsize = 10, no.workers = 2),
+               list(optimal.batchsize = 9, optimal.no.batches = 6, last.batchsizes = c(7,7))) #c(9, 9, 9, 9, 7, 7) is better than c(10, 10, 10, 10, 10, 0)
+  expect_equal(optimal.batch.configuration(no.covariates = 100, max.batchsize = 20, no.workers = 3),
+               list(optimal.batchsize = 17, optimal.no.batches = 6, last.batchsizes = c(17, 17, 15)))
+  expect_equal(optimal.batch.configuration(no.covariates = 300, max.batchsize = 10, no.workers = 16),
+               list(optimal.batchsize = 10, optimal.no.batches = 32, last.batchsizes = c(rep(9, 15), 5)))
+
+  #When edge-cases:
+  expect_equal(optimal.batch.configuration(no.covariates = 50, max.batchsize = 2, no.workers = 4),
+               list(optimal.batchsize = 2, optimal.no.batches = 28, last.batchsizes = c(1, 1)))
+  expect_equal(optimal.batch.configuration(no.covariates = 100, max.batchsize = 2, no.workers = 3),
+               list(optimal.batchsize = 2, optimal.no.batches = 51, last.batchsizes = c(2, 2)))
+  expect_equal(optimal.batch.configuration(no.covariates = 300, max.batchsize = 10, no.workers = 32),
+               list(optimal.batchsize = 10, optimal.no.batches = 32, last.batchsizes = rep(10, 30)))
 })
