@@ -3,10 +3,13 @@
 load("data/example_snp_data.rda") #"example.snp.data"
 example.snp.data <- read.table("data-raw/s1_gendat.txt", header = TRUE)[,1:3000]
 
+seed.var = 1
+seed.var = seed.var + 1
+set.seed(seed.var)
 
-(epistasis.snps <- c(49, 485))
+(epistasis.snps <- sample(2000:2500, 2))
 subjects.subset <- 1:200
-covariates.subset <- 1:500
+covariates.subset <- 2000:2500
 check.cor <- c(epistasis.snps-1, epistasis.snps, epistasis.snps+1)
 stats::cor(example.snp.data[,check.cor])
 set.seed(37 * 42)
@@ -33,7 +36,7 @@ example_snp_data <- as.matrix(example.snp.data[subjects.subset, covariates.subse
 attr(example_snp_data, "dimnames") = list(subject.numbers = attr(example.snp.data, "dimnames")[[1]],
                                           snp.names = attr(example.snp.data, "dimnames")[[2]])
 
-foo <- twostagecoxph(example_survival_data, example_snp_data, progress = 50, first.stage.threshold = 0.00001)
+foo <- twostagecoxph(example_survival_data, example_snp_data, progress = 50, first.stage.threshold = 0.0001)
 print(foo)
 
 usethis::use_data(example_survival_data, compress = "bzip2", overwrite = TRUE)

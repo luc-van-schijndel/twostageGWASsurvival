@@ -53,11 +53,9 @@
 #' twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
 #'
 #' ## Not run:
-#' #load("data/example_survival_data.rda")
-#' #load("data/example_snp_data.rda")
-#' #str(example_survival_data)
-#' #str(example_snp_data)
-#' #foo <- twostagecoxph(example_survival_data, example_snp_data, first.stage.threshold = 1e-5)
+#' str(example_survival_data)
+#' str(example_snp_data)
+#' print(foo <- twostagecoxph(example_survival_data, example_snp_data, first.stage.threshold = 1e-5))
 #' ## End(Not run)
 twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold = 0.05,
                           multiple.hypotheses.correction = "bonferroni", multicore = FALSE,
@@ -113,24 +111,51 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
     ts.output$second.stage.sparse.matrix@x <- stats::p.adjust(ts.output$second.stage.sparse.matrix@x, method = multiple.hypotheses.correction)
   }
 
+  unique.p.values <- unique(ts.output$second.stage.sparse.matrix@x)
 
-  report.lowest.amount = min(report.lowest.amount, sum(ts.output$second.stage.sparse.matrix@x < 1))
+  report.lowest.amount = min(report.lowest.amount, sum(unique.p.values < 1, na.rm = TRUE))
+  if(report.lowest.amount > 0){
+    fifth.lowest <- stats::quantile(ts.output$second.stage.sparse.matrix@x,
+                                    probs = report.lowest.amount/sum(!is.na(ts.output$second.stage.sparse.matrix@x)),
+                                    na.rm = TRUE)
 
-  fifth.lowest <- stats::quantile(ts.output$second.stage.sparse.matrix@x,
-                                  probs = report.lowest.amount/sum(!is.na(ts.output$second.stage.sparse.matrix@x)),
-                                  na.rm = TRUE)
-  indices.lowest.five <- Matrix::which(ts.output$second.stage.sparse.matrix <= fifth.lowest &
-                                         ts.output$second.stage.sparse.matrix > 0 &
-                                         ts.output$second.stage.sparse.matrix < 1, arr.ind = TRUE)
-  lowest.five <- ts.output$second.stage.sparse.matrix[indices.lowest.five]
-  attr(lowest.five, "names") = c(apply(Matrix::which(ts.output$second.stage.sparse.matrix <= fifth.lowest &
-                                                       ts.output$second.stage.sparse.matrix > 0, arr.ind = TRUE),
-                                      1, function(.) paste0(., collapse = " x ")))
+    fifth.lowest.unique <- stats::quantile(unique.p.values,
+                                    probs = report.lowest.amount/sum(!is.na(unique.p.values)),
+                                    na.rm = TRUE)
+    indices.lowest.five <- Matrix::which(ts.output$second.stage.sparse.matrix <= fifth.lowest.unique &
+                                           ts.output$second.stage.sparse.matrix > 0 &
+                                           ts.output$second.stage.sparse.matrix < 1, arr.ind = TRUE)
 
+    lowest.five.dupl <- ts.output$second.stage.sparse.matrix[indices.lowest.five]
+    lowest.table <- table(lowest.five.dupl) - 1
+    names(lowest.five.dupl) <- c(apply(indices.lowest.five,
+                                       1, function(.) paste0(., collapse = " x ")))
+
+    lowest.five <- unique(lowest.five.dupl)
+
+    attr(lowest.five, "names") = c(apply(t(as.matrix(indices.lowest.five[!duplicated(lowest.five.dupl),])),
+                                        1, function(.) paste0(., collapse = " x ")))
+    lowest.five <- sort(lowest.five, decreasing = FALSE)
+    attr(lowest.five, "duplicate results") = as.integer(table(lowest.five.dupl) - 1) #the table was already sorted
+
+
+
+    duplicate.list <- vector("list", report.lowest.amount)
+    names(duplicate.list) <- names(lowest.five)
+    for(interaction in 1:report.lowest.amount){
+      this.list = list(lowest.five.dupl[which(lowest.five.dupl == lowest.five[interaction])])
+      names(this.list) = names(lowest.five)[interaction]
+      duplicate.list[[interaction]] <- this.list[[1]][names(this.list[[1]]) != names(this.list)]
+    }
+
+    lowest.five.list <- list(interacting.snps = attr(lowest.five, "names"),
+                             p.value.epistasis = as.numeric(sort(unique(lowest.five.dupl))),
+                             duplicate.interactions = duplicate.list)
+  } else lowest.five.list = list()
   total.runtime <- proc.time()[3] - start.time
   names(total.runtime) = c("seconds")
 
-  return.object <- list(most.significant.results = sort(lowest.five),
+  return.object <- list(most.significant.results = lowest.five.list,
                         p.value.matrix = ts.output$second.stage.sparse.matrix,
                         marginal.significant = ts.output$passed.indices,
                         first.stage = ts.output$first.stage.p.values,
@@ -225,7 +250,7 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
           fitted.model <-
             survival::coxph(survival.dataset ~ covariate.one * covariate.two),
           warning = function(w) {
-            if (grepl("coefficient may be infinite.", w$message)) {
+            if (grepl("coefficient may be infinite", w$message)) {
               #print("An error was given, which is taken into account in convergence.check")
             } else if (grepl("out of iterations", w$message)) {
               #print("An error was given, which is taken into account in convergence.check")
@@ -238,7 +263,6 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
 
 
 
-        #fitted.model <- survival::coxph(survival.dataset ~ covariate.one * covariate.two)
         if (convergence.check(fitted.model, max.coef)) {
           second.stage.sparse.matrix[index.first.covariate, index.second.covariate] <-
             summary(fitted.model)$coefficients[3, 5]
@@ -350,7 +374,6 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
       }
 
 
-      #fitted.model <- survival::coxph(survival.dataset ~ covariate.one * covariate.two)
       if(convergence.check(fitted.model, max.coef)){
         second.stage.sparse.matrix[index.first.covariate, index.second.covariate] <-
           summary(fitted.model)$coefficients[3,5]
@@ -389,14 +412,15 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
         warning = function(w) {
           if (grepl("coefficient may be infinite.", w$message)) {
             #print("An error was given, which is taken into account in convergence.check")
-          } else {
+          } else if (grepl("out of iterations", w$message)) {
+            #print("An error was given, which is taken into account in convergence.check")
+          }
+          else {
             message(w$message)
           }
         }
       )
     }
-    fitted.model <-
-      survival::coxph(survival.dataset ~ this.covariate)
     if (convergence.check(fitted.model, max.coef)) {
       p.value.vector[covariate.index] <-
         summary(fitted.model)$coefficients[1, 5]
@@ -432,6 +456,7 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
 #' @return the p-values of the first stage (in random order) with proper names() attribute.
 #'
 #' @importFrom foreach %dopar%
+#' @importFrom survival coxph
 #'
 #' @details
 #' The covariates are split into a number of batches. The amount of covariates in every batch
@@ -456,8 +481,11 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
 
   optimal.batchsize <- optimal.batchconf$optimal.batchsize
   no.processes <- optimal.batchconf$optimal.no.batches
-  batchsizes.vector <- c(rep(optimal.batchsize, no.processes - no.workers), optimal.batchconf$last.batchsizes)
-  matrix.indices.processes <- matrix(c(seq_len(sum(batchsizes.vector)), rep(NA, no.workers - length(optimal.batchconf$last.batchsizes))),
+  batchsizes.vector <- c(rep(optimal.batchsize, no.processes - no.workers),
+                         optimal.batchconf$last.batchsizes)
+  matrix.indices.processes <- matrix(c(seq_len(sum(batchsizes.vector)),
+                                       rep(NA, no.workers*max(optimal.batchconf$last.batchsizes) -
+                                             sum(optimal.batchconf$last.batchsizes))),
                                      ncol = length(batchsizes.vector),
                                      nrow = optimal.batchsize)
 
@@ -466,30 +494,31 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
                                      .packages = c("survival", "utils"),
                                      .export = c("prefitting.check.one", "convergence.check"),
                                      .combine = c) %dopar% {
-    this.process.indices = (matrix.indices.processes[,process.index])[!is.na(matrix.indices.processes)]
+    this.process.indices = (matrix.indices.processes[,process.index])[!is.na(matrix.indices.processes[,process.index])]
     this.process.p.values <- rep(NA, length(this.process.indices))
     for(covariate.index in 1:length(this.process.indices)){
-      this.covariate <- covariate.matrix[, covariate.index]
+      this.covariate <- covariate.matrix[, this.process.indices[covariate.index]]
       if(prefitting.check.one(this.covariate)){
         tryCatch(
           fitted.model <- survival::coxph(survival.dataset ~ this.covariate),
           warning = function(w) {
             if (grepl("coefficient may be infinite.", w$message)) {
               #print("An error was given, which is taken into account in convergence.check")
-            } else {
+            } else if (grepl("out of iterations", w$message)) {
+              #print("An error was given, which is taken into account in convergence.check")
+            }
+            else {
               message(w$message)
             }
           }
         )
       }
-      fitted.model <-
-        coxph(survival.dataset ~ this.covariate)
       if (convergence.check(fitted.model, max.coef)) {
         this.process.p.values[covariate.index] <-
           summary(fitted.model)$coefficients[1, 5]
       }
-      if(max(covariate.index %% progress == 0, FALSE, na.rm = TRUE)){
-        progress.frac <- covariate.index/length(p.value.vector)
+      if(max(this.process.indices[covariate.index] %% progress == 0, FALSE, na.rm = TRUE)){
+        progress.frac <- this.process.indices[covariate.index]/length(p.value.vector)
         clear.current.line()
         cat("\r", "First stage is at ", round(progress.frac*100, digits = 0), "% progress. ",
             "Estimated time until completion first stage: ",
@@ -540,6 +569,7 @@ clear.current.line <- function(){
 #'                            nrow = 10, ncol = 3, byrow = TRUE)
 #' twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
 print.twostageGWAS <- function(x, ...){
+  if(class(x) != "twostageGWAS") stop("class must be twostageGWAS")
   cat("\nCall:\n",
     paste(deparse(x$call), sep = "\n", collapse = "\n"), "\n\n", sep = "", ...)
   cat(length(x$marginal.significant), " covariates were marginally significant at level ",
@@ -549,8 +579,17 @@ print.twostageGWAS <- function(x, ...){
     cat("No relevant results were found after applying the multiple hypotheses correction.", ...)
   } else{
     cat("These are the most significant interactions found with their respective p-values:\n", ...)
-        print.default(round(x$most.significant.results[1:min(length(x$most.significant.results), 5)],
-                    digits = min(6L, getOption("digits"))), ...)
+    #a maximum of 5 will be displayed
+    similar.interactions <- rep(0, min(length(x$most.significant.results$duplicate.interactions), 5))
+    for (i in 1:length(similar.interactions)){
+      similar.interactions[i] <- length(x$most.significant.results$duplicate.interactions[[i]])
+    }
+    format.matrix <- matrix(c(x$most.significant.results$p.value.epistasis[1:length(similar.interactions)],
+                              similar.interactions), nrow = 2, ncol = length(similar.interactions),
+                            dimnames = list(c("p-value epistasis", "amount similar results"), x$most.significant.results$interacting.snps),
+                            byrow = TRUE)
+    print.default(format(format.matrix, drop0trailing = TRUE, digits = min(6L, getOption("digits"))), quote = FALSE, ...)
   }
+  cat("\n")
   invisible(x)
 }

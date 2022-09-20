@@ -62,3 +62,9 @@
 #   return(list(optimal.batchsize = final.batchsize, optimal.no.batches = final.no.batches,
 #               last.batchsizes = c(rep(last.batchsize, last.no.full.batches), last.partial.batch)))
 # }
+
+
+
+
+#extract stuff and make matrix, with corresponding dimnames
+

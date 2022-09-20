@@ -82,11 +82,9 @@ covariate.matrix <- matrix(c(2,2,1,
 twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
 
 ## Not run:
-#load("data/example_survival_data.rda")
-#load("data/example_snp_data.rda")
-#str(example_survival_data)
-#str(example_snp_data)
-#foo <- twostagecoxph(example_survival_data, example_snp_data, first.stage.threshold = 1e-5)
+str(example_survival_data)
+str(example_snp_data)
+print(foo <- twostagecoxph(example_survival_data, example_snp_data, first.stage.threshold = 1e-5))
 ## End(Not run)
 }
 \seealso{
