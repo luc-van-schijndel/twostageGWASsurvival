@@ -55,13 +55,22 @@
 #' ## Not run:
 #' str(example_survival_data)
 #' str(example_snp_data)
-#' print(foo <- twostagecoxph(example_survival_data, example_snp_data, first.stage.threshold = 1e-5))
+#'
+#' print(foo <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
+#'                             first.stage.threshold = 1e-5))
+#' print(bar <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
+#'                             first.stage.threshold = 1e-4))
+#' #1:300 subsetting is added to speed up the example. Try removing it! :)
+#'
+#' #as we can see, foo and bar have different results. A lower FST generally gives more power, but it
+#' #it risks the possibility to be too strict and consequently *decreasing* power.
 #' ## End(Not run)
 twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold = 0.05,
                           multiple.hypotheses.correction = "bonferroni", multicore = FALSE,
                           report.lowest.amount = 5, return.raw = FALSE,
                           progress = 1000, max.coef = 5, max.batchsize = 1000,
                           updatefile = "", upper.bound.correlation = 0.95){
+  # first.stage.threshold = 0.05; multiple.hypotheses.correction = "bonferroni"; multicore = FALSE; report.lowest.amount = 5; return.raw = FALSE; progress = 0; max.coef = 5; max.batchsize = 1000; updatefile = ""; upper.bound.correlation = 0.95
   if(!survival::is.Surv(survival.dataset)) stop("survival.dataset must be a Surv object")
   if(!is.matrix(covariate.matrix)) stop("covariate.matrix must be a (strict) matrix")
 
@@ -96,6 +105,8 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 
   this.call <- match.call()
 
+  snps.are.named = !is.null(dimnames(covariate.matrix)[[2]])
+
   start.time <- proc.time()[3]
   if(multicore == FALSE){
     ts.output <- singlecore.twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold,
@@ -115,10 +126,6 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 
   report.lowest.amount = min(report.lowest.amount, sum(unique.p.values < 1, na.rm = TRUE))
   if(report.lowest.amount > 0){
-    fifth.lowest <- stats::quantile(ts.output$second.stage.sparse.matrix@x,
-                                    probs = report.lowest.amount/sum(!is.na(ts.output$second.stage.sparse.matrix@x)),
-                                    na.rm = TRUE)
-
     fifth.lowest.unique <- stats::quantile(unique.p.values,
                                     probs = report.lowest.amount/sum(!is.na(unique.p.values)),
                                     na.rm = TRUE)
@@ -128,13 +135,19 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 
     lowest.five.dupl <- ts.output$second.stage.sparse.matrix[indices.lowest.five]
     lowest.table <- table(lowest.five.dupl) - 1
-    names(lowest.five.dupl) <- c(apply(indices.lowest.five,
-                                       1, function(.) paste0(., collapse = " x ")))
+    if(snps.are.named){
+      names.lowest.five <- matrix(c(dimnames(covariate.matrix)[[2]][as.vector(indices.lowest.five)]),
+                                  ncol = 2)
+      names(lowest.five.dupl) <- c(apply(names.lowest.five,
+                                         1, function(.) paste0(., collapse = " x ")))
+    } else{
+      names(lowest.five.dupl) <- c(apply(indices.lowest.five,
+                                         1, function(.) paste0(., collapse = " x ")))
+    }
 
-    lowest.five <- unique(lowest.five.dupl)
 
-    attr(lowest.five, "names") = c(apply(t(as.matrix(indices.lowest.five[!duplicated(lowest.five.dupl),])),
-                                        1, function(.) paste0(., collapse = " x ")))
+    lowest.five <- lowest.five.dupl[!duplicated(lowest.five.dupl)] #this keeps the "names" attribute
+
     lowest.five <- sort(lowest.five, decreasing = FALSE)
     attr(lowest.five, "duplicate results") = as.integer(table(lowest.five.dupl) - 1) #the table was already sorted
 
@@ -202,7 +215,8 @@ convergence.check <- function(coxph.model, max.coef = 5){
 #' @param no.workers number of workers
 #'
 #' @return a list of size 3, containing the number of covariates in each batch, the number of batches
-#' (including possible empty ones at the end, this way it always is a multiple of no.workers), and a vector of batchsizes for the last iteration (excluding trailing zeros)
+#' (including possible empty ones at the end, this way it always is a multiple of no.workers),
+#' and a vector of batchsizes for the last iteration (including trailing zeros)
 #' @export
 #'
 #' @details configures this in such a way that the number of covariates does not exceed the
@@ -219,9 +233,12 @@ optimal.batch.configuration <- function(no.covariates, max.batchsize, no.workers
   last.batchsize <- ceiling(last.iter.covs/no.workers)
   last.no.full.batches <- ceiling(last.iter.covs/last.batchsize - 1)
   last.partial.batch <- last.iter.covs - last.batchsize*last.no.full.batches
+  last.batchsizes <- c(rep(last.batchsize, last.no.full.batches), last.partial.batch)
+  #add trailing 0's
+  last.batchsizes <- c(last.batchsizes, rep(0, no.workers - length(last.batchsizes)))
 
   return(list(optimal.batchsize = final.batchsize, optimal.no.batches = final.no.batches,
-              last.batchsizes = c(rep(last.batchsize, last.no.full.batches), last.partial.batch)))
+              last.batchsizes = last.batchsizes))
 }
 
 singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
@@ -328,6 +345,9 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
   first.stage.result <- firststagecoxph.multicore(survival.dataset, covariate.matrix, progress,
                                                   max.coef, max.batchsize = 1000, updatefile)
 
+  #trailing NAs have names "", so we drop these
+  first.stage.result <- first.stage.result[names(first.stage.result) != ""]
+
   #revert (possible) reordering introduced in first stage
   first.stage.permutation <- order(as.integer(names(first.stage.result)))
   first.stage.result <- first.stage.result[first.stage.permutation]
@@ -344,6 +364,9 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
                                                      x = 1, triangular = TRUE)
 
   no.workers <- foreach::getDoParWorkers()
+  optimal.batchconf <- optimal.batch.configuration(no.covariates = amount.rejections,
+                                                   max.batchsize = floor(max.batchsize/2),
+                                                   no.workers = floor(no.workers/2))
   optimal.batchsize <- ceiling(amount.rejections/(ceiling(ceiling(amount.rejections/min(ceiling(amount.rejections/no.workers/2), max.batchsize/2))/no.workers)*no.workers))
   optimal.no.batches <- ceiling(amount.rejections/optimal.batchsize)
 
@@ -454,6 +477,9 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
 #' @param updatefile path to file to replace terminal
 #'
 #' @return the p-values of the first stage (in random order) with proper names() attribute.
+#'          As a consequence of possible empty batches, there may be trailing NA's. Ironically however,
+#'          these are  not guaranteed to be trailing, due to the fact that batches can finish
+#'          in any order. They are identified by their names attribute being empty: "".
 #'
 #' @importFrom foreach %dopar%
 #' @importFrom survival coxph
@@ -492,9 +518,11 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
   process.index <- NULL #suppressing a note from devtools::check()
   p.value.vector <- foreach::foreach(process.index = seq_len(no.processes),
                                      .packages = c("survival", "utils"),
-                                     .export = c("prefitting.check.one", "convergence.check"),
+                                     .export = c("prefitting.check.one", "convergence.check",
+                                                 "clear.current.line"),
                                      .combine = c) %dopar% {
     this.process.indices = (matrix.indices.processes[,process.index])[!is.na(matrix.indices.processes[,process.index])]
+    if(length(this.process.indices) == 0) return(rep(NA, optimal.batchsize)) #if the batch is empty, return NA's
     this.process.p.values <- rep(NA, length(this.process.indices))
     for(covariate.index in 1:length(this.process.indices)){
       this.covariate <- covariate.matrix[, this.process.indices[covariate.index]]
@@ -518,7 +546,7 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
           summary(fitted.model)$coefficients[1, 5]
       }
       if(max(this.process.indices[covariate.index] %% progress == 0, FALSE, na.rm = TRUE)){
-        progress.frac <- this.process.indices[covariate.index]/length(p.value.vector)
+        progress.frac <- this.process.indices[covariate.index]/no.covariates
         clear.current.line()
         cat("\r", "First stage is at ", round(progress.frac*100, digits = 0), "% progress. ",
             "Estimated time until completion first stage: ",
@@ -569,7 +597,7 @@ clear.current.line <- function(){
 #'                            nrow = 10, ncol = 3, byrow = TRUE)
 #' twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
 print.twostageGWAS <- function(x, ...){
-  if(class(x) != "twostageGWAS") stop("class must be twostageGWAS")
+  #if(class(x) != "twostageGWAS") stop("class must be twostageGWAS")
   cat("\nCall:\n",
     paste(deparse(x$call), sep = "\n", collapse = "\n"), "\n\n", sep = "", ...)
   cat(length(x$marginal.significant), " covariates were marginally significant at level ",

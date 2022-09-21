@@ -28,6 +28,9 @@ firststagecoxph.multicore(
 }
 \value{
 the p-values of the first stage (in random order) with proper names() attribute.
+As a consequence of possible empty batches, there may be trailing NA's. Ironically however,
+these are  not guaranteed to be trailing, due to the fact that batches can finish
+in any order. They are identified by their names attribute being empty: "".
 }
 \description{
 Perform the first stage of a GWAS in parallel

@@ -24,6 +24,7 @@ test_that("Wrong input objects give errors", {
                              nrow = 10, ncol = 3, byrow = TRUE)
   expect_warning(twostagecoxph(survival.dataset, t(covariate.matrix), progress = 0), "Transposed")
   expect_warning(twostagecoxph(survival.dataset, covariate.matrix, report.lowest.amount = 9.5, progress = 0), "integer")
+  expect_error(twostagecoxph(survival.dataset, covariate.matrix, max.batchsize = 1), "2 or greater")
 
 })
 
@@ -161,6 +162,18 @@ test_that("(Multicore) first stage gives proper output", {
   expect_gt(min(first.stage.output), 0)
   expect_equal(first.stage.output[c("1", "2", "3")], expected.output,
                tolerance = 1e-7)
+
+  #This tests the case where one batch is completely empty:
+  first.stage.output <- firststagecoxph.multicore(survival.dataset, covariate.matrix,
+                                                  progress = 0, max.batchsize = 1)
+  expected.output <- c(0.007898618, 0.012893229, 0.015147279, NA)
+  names(expected.output) <- c("1", "2", "3", "")
+
+  expect_length(first.stage.output, 4)
+  expect_lt(max(first.stage.output, na.rm = TRUE), 1)
+  expect_gt(min(first.stage.output, na.rm = TRUE), 0)
+  expect_equal(first.stage.output[c("1", "2", "3")], expected.output[c("1", "2", "3")],
+               tolerance = 1e-7) #we excluded subsetting with "", since the name attribute then gets lost.
 })
 
 #optimal batch configuration tests================
@@ -174,7 +187,7 @@ test_that("Optimal batch configuration calculations are right", {
   expect_equal(optimal.batch.configuration(no.covariates = 20, max.batchsize = 1000, no.workers = 3),
                list(optimal.batchsize = 7, optimal.no.batches = 3, last.batchsizes = c(7,7,6)))
   expect_equal(optimal.batch.configuration(no.covariates = 30, max.batchsize = 1000, no.workers = 32),
-               list(optimal.batchsize = 1, optimal.no.batches = 32, last.batchsizes = rep(1,30)))
+               list(optimal.batchsize = 1, optimal.no.batches = 32, last.batchsizes = c(rep(1,30), rep(0, 2))))
 
   #When restrictions are a problem:
   expect_equal(optimal.batch.configuration(no.covariates = 50, max.batchsize = 10, no.workers = 2),
@@ -186,9 +199,39 @@ test_that("Optimal batch configuration calculations are right", {
 
   #When edge-cases:
   expect_equal(optimal.batch.configuration(no.covariates = 50, max.batchsize = 2, no.workers = 4),
-               list(optimal.batchsize = 2, optimal.no.batches = 28, last.batchsizes = c(1, 1)))
+               list(optimal.batchsize = 2, optimal.no.batches = 28, last.batchsizes = c(1, 1, 0, 0)))
   expect_equal(optimal.batch.configuration(no.covariates = 100, max.batchsize = 2, no.workers = 3),
-               list(optimal.batchsize = 2, optimal.no.batches = 51, last.batchsizes = c(2, 2)))
+               list(optimal.batchsize = 2, optimal.no.batches = 51, last.batchsizes = c(2, 2, 0)))
   expect_equal(optimal.batch.configuration(no.covariates = 300, max.batchsize = 10, no.workers = 32),
-               list(optimal.batchsize = 10, optimal.no.batches = 32, last.batchsizes = rep(10, 30)))
+               list(optimal.batchsize = 10, optimal.no.batches = 32, last.batchsizes = c(rep(10, 30), rep(0, 2))))
+
+
+  #Using it in the second stage ---------
+  #we divide max.batchsize and no.covariates by 2 (rounding down). max.batchsize since we need to compare (mostly) 2 batches,
+  #so we halve this limit to accomodate, and the number of covariates, since we split the process
+  #up in. This allows for similar finish-times using first-in, last-out (see documentation of multicore.twostagecoxph)
+
+  #When restrictions are not a problem:
+  expect_equal(optimal.batch.configuration(no.covariates = 10/2, max.batchsize = 1000/2, no.workers = 2),
+               list(optimal.batchsize = 3, optimal.no.batches = 2, last.batchsizes = c(3,2))) #1:3x(1:3, 4:5, 6:8, 9:10) + 4:5x(4:5, 6:8, 9:10) + 6:8x(6:8, 9:10) + 9:10x9:10
+  expect_equal(optimal.batch.configuration(no.covariates = 20/2, max.batchsize = 1000/2, no.workers = 3),
+               list(optimal.batchsize = 4, optimal.no.batches = 3, last.batchsizes = c(4,4,2)))
+  expect_equal(optimal.batch.configuration(no.covariates = 30/2, max.batchsize = 1000/2, no.workers = 32),
+               list(optimal.batchsize = 1, optimal.no.batches = 32, last.batchsizes = c(rep(1,15), rep(0, 17))))
+
+  #When restrictions are a problem:
+  expect_equal(optimal.batch.configuration(no.covariates = 50/2, max.batchsize = 10/2, no.workers = 2),
+               list(optimal.batchsize = 5, optimal.no.batches = 6, last.batchsizes = c(3,2))) #c(9, 9, 9, 9, 7, 7) is better than c(10, 10, 10, 10, 10, 0)
+  expect_equal(optimal.batch.configuration(no.covariates = 100/2, max.batchsize = 20/2, no.workers = 3),
+               list(optimal.batchsize = 9, optimal.no.batches = 6, last.batchsizes = c(8,8,7)))#same as above, batches of 9 distribute the load better.
+  expect_equal(optimal.batch.configuration(no.covariates = 300/2, max.batchsize = 10/2, no.workers = 16),
+               list(optimal.batchsize = 5, optimal.no.batches = 32, last.batchsizes = c(rep(5, 14), rep(0, 2))))
+
+  #When edge-cases:
+  expect_equal(optimal.batch.configuration(no.covariates = 50/2, max.batchsize = 2/2, no.workers = 4),
+               list(optimal.batchsize = 1, optimal.no.batches = 28, last.batchsizes = c(1, 0, 0, 0)))
+  expect_equal(optimal.batch.configuration(no.covariates = 100/2, max.batchsize = 2/2, no.workers = 3),
+               list(optimal.batchsize = 1, optimal.no.batches = 51, last.batchsizes = c(1, 1, 0)))
+  expect_equal(optimal.batch.configuration(no.covariates = 300/2, max.batchsize = 10/2, no.workers = 32),
+               list(optimal.batchsize = 5, optimal.no.batches = 32, last.batchsizes = c(rep(5, 30), rep(0, 2))))
 })

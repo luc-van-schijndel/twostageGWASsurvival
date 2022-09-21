@@ -15,7 +15,8 @@ optimal.batch.configuration(no.covariates, max.batchsize, no.workers = 1)
 }
 \value{
 a list of size 3, containing the number of covariates in each batch, the number of batches
-(including possible empty ones at the end, this way it always is a multiple of no.workers), and a vector of batchsizes for the last iteration (excluding trailing zeros)
+(including possible empty ones at the end, this way it always is a multiple of no.workers),
+and a vector of batchsizes for the last iteration (including trailing zeros)
 }
 \description{
 Calculates the optimal batch configuration
