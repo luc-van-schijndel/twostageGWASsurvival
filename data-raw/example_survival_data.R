@@ -7,7 +7,8 @@ seed.var = 1
 seed.var = seed.var + 1
 set.seed(seed.var)
 
-(epistasis.snps <- sample(2000:2500, 2))
+
+(epistasis.snps <- c(2074, 2306))#sample(2000:2500, 2))
 subjects.subset <- 1:200
 covariates.subset <- 2000:2500
 check.cor <- c(epistasis.snps-1, epistasis.snps, epistasis.snps+1)
@@ -32,9 +33,9 @@ cox.model <- survival::coxph(example.survival.data[subjects.subset,] ~ example.s
 print(summary(cox.model)$coef[3,5])
 
 example_survival_data <- example.survival.data[subjects.subset,]
-example_snp_data <- as.matrix(example.snp.data[subjects.subset, covariates.subset])
-attr(example_snp_data, "dimnames") = list(subject.numbers = attr(example.snp.data, "dimnames")[[1]],
-                                          snp.names = attr(example.snp.data, "dimnames")[[2]])
+example_snp_data <- as.matrix(example.snp.data[subjects.subset, covariates.subset], dimnames =
+                                list(subject.numbers = 1:dim(example.snp.data)[1],
+                                     snp.names = attr(example.snp.data, "names")[[2]]))
 
 foo <- twostagecoxph(example_survival_data, example_snp_data, progress = 50, first.stage.threshold = 0.0001)
 print(foo)
