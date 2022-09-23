@@ -12,7 +12,7 @@ multicore.twostagecoxph(
   max.coef = 5,
   updatefile = "",
   max.batchsize = 1000,
-  upper.bound.correlation
+  upper.bound.correlation = 0.95
 )
 }
 \arguments{
@@ -51,4 +51,18 @@ since the first one already did that. This allows the second batch to be done be
 hence the "first-in, last-out" naming. The number of batches will always be a multiple of
 two times the number of worker cores; this should ensure that all workers should be done
 at the same time.
+
+There is quite some code-duplication going on (DRY! OMG! U NUB), but that's for a reason. Function
+calls in R have a tiny bit of overhead, and since we would do these function-calls a lot (and I mean a LOT)
+of times, I have opted to simply copy the function's code into this function itself, and forego
+the function itself.
+
+Since this function is not exported, I will discusse the 6 indices found in the for-loops
+(at some point we are 4 for-loops deep)
+first.batch.real.indices
+first/second.local.index
+first/second.covariate.index
+
+passed.indices are not used, since amount rejections is better since possible NAs have been
+removed.
 }

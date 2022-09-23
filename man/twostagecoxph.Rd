@@ -29,7 +29,8 @@ has a p-value lower than this threshold, it will be passed on to the second stag
 
 \item{multiple.hypotheses.correction}{Correction method, a character string. Passed to stats::p.adjust}
 
-\item{multicore}{Currently unused}
+\item{multicore}{logical, default FALSE; whether or not the function should use multiple cores
+in its calculations. See Details.}
 
 \item{report.lowest.amount}{integer scalar denoting how many of the most significant interactions
 the function should report}
@@ -63,7 +64,8 @@ a twostageGWAS object; a list of 5 entries: stuff
 Work in progress. Only the most basic functionality works.
 }
 \note{
-Parallel processing is currently not supported
+Parallel processing requires a properly registered parallel back-end, such as one obtained
+from "doParallel::registerDoParallel(2)"
 }
 \examples{
 survival.dataset <- survival::Surv(c(5,5,3,3,2,2,2,1,1,1),
@@ -85,11 +87,11 @@ twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
 str(example_survival_data)
 str(example_snp_data)
 
-print(foo <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
+print(foo <- twostagecoxph(example_survival_data[1:100,], example_snp_data[1:100,1:300],
                             first.stage.threshold = 1e-5))
-print(bar <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
+print(bar <- twostagecoxph(example_survival_data[1:100,], example_snp_data[1:100,1:300],
                             first.stage.threshold = 1e-4))
-#1:300 subsetting is added to speed up the example. Try removing it! :)
+#[1:100,1:300] subsetting is added to speed up the example. Try removing it! :)
 
 #as we can see, foo and bar have different results. A lower FST generally gives more power, but it
 #it risks the possibility to be too strict and consequently *decreasing* power.

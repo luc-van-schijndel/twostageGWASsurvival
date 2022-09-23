@@ -1,5 +1,10 @@
 #*check new implementation of multicore.first stage
 #*
+#*batch making for multicore, either by file or by subsetting
+#*
+#*allow for the option of never having the full covariate matrix loaded in memory. Instead reading
+#*bit by bit from files.
+#*
 #*Additional return info (D, I think? No more can be reasonably added?)
 #*
 #*large dataset. Make good example from this.

@@ -49,8 +49,8 @@ test_that("Incorrect first.stage.threshold input gives errors", {
   expect_error(twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 1), "decreasing")
   expect_error(twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0), "increasing")
 
-  expect_error(twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 1e-7, progress = 0), "No rejections")
-  expect_error(twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0.01, progress = 0), "one rejection") #the first stage p-values are 0.008, 0.013 and 0.015
+  expect_warning(twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 1e-7, progress = 0), "No rejections")
+  expect_warning(twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0.01, progress = 0), "one rejection") #the first stage p-values are 0.008, 0.013 and 0.015
 })
 
 #Proper (numeric) outputs=======================
@@ -97,20 +97,25 @@ test_that("Outputs are the p-values we expect", {
   #(c(summary(survival::coxph(survival.dataset ~ covariate.matrix[,1]))$coef[1,5],
   #   summary(survival::coxph(survival.dataset ~ covariate.matrix[,2]))$coef[1,5],
   #   summary(survival::coxph(survival.dataset ~ covariate.matrix[,3]))$coef[1,5]))
+  expected.first.stage = c(0.007898618, 0.012893229, 0.015147279)
+  names(expected.first.stage) <- 1:3
   expect_equal(firststagecoxph(survival.dataset, covariate.matrix, progress = 0),
-               c(0.007898618, 0.012893229, 0.015147279),
+               expected.first.stage,
                tolerance = 1e-7)
 
 
   #(c(summary(survival::coxph(survival.dataset ~ covariate.matrix[,1]*covariate.matrix[,2]))$coef[3,5],
   #   summary(survival::coxph(survival.dataset ~ covariate.matrix[,1]*covariate.matrix[,3]))$coef[3,5],
   #   summary(survival::coxph(survival.dataset ~ covariate.matrix[,2]*covariate.matrix[,3]))$coef[3,5]))
+  expected.second.stage <- list(second.stage.sparse.matrix = Matrix::sparseMatrix(i = c(1,1,2), j = c(2,3,3),
+                                                         x = c(0.29283645, 0.76400342, 0.09613708),
+                                                         triangular = TRUE),
+       passed.indices = c(1,2,3),
+       first.stage.p.values = c(0.007898618, 0.012893229, 0.015147279))
+  names(expected.second.stage$passed.indices) = 1:3
+  names(expected.second.stage$first.stage.p.values) = 1:3
   expect_equal(singlecore.twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0.05, progress = 0),
-               list(second.stage.sparse.matrix = Matrix::sparseMatrix(i = c(1,1,2), j = c(2,3,3),
-                                    x = c(0.29283645, 0.76400342, 0.09613708),
-                                    triangular = TRUE),
-                    passed.indices = c(1,2,3),
-                    first.stage.p.values = c(0.007898618, 0.012893229, 0.015147279)),
+               expected.second.stage,
                tolerance = 1e-7)
 
   expect_equal(twostagecoxph(survival.dataset, covariate.matrix, return.raw = TRUE, progress = 0)$p.value.matrix,
@@ -174,6 +179,12 @@ test_that("(Multicore) first stage gives proper output", {
   expect_gt(min(first.stage.output, na.rm = TRUE), 0)
   expect_equal(first.stage.output[c("1", "2", "3")], expected.output[c("1", "2", "3")],
                tolerance = 1e-7) #we excluded subsetting with "", since the name attribute then gets lost.
+
+  #second stage multicore function---------------
+
+  second.stage.output <- multicore.twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0.05, progress = 0)
+  second.stage.output.singlecore <- singlecore.twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0.05, progress = 0)
+  expect_equal(second.stage.output, second.stage.output.singlecore)
 })
 
 #optimal batch configuration tests================
