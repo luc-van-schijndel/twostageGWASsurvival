@@ -86,6 +86,10 @@ twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
 ## Not run:
 str(example_survival_data)
 str(example_snp_data)
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> e57c09f57a6b9e49ec35e1f39b46ea30adcf3d1d
 
 print(foo <- twostagecoxph(example_survival_data[1:100,], example_snp_data[1:100,1:300],
                             first.stage.threshold = 1e-5))
@@ -95,6 +99,11 @@ print(bar <- twostagecoxph(example_survival_data[1:100,], example_snp_data[1:100
 
 #as we can see, foo and bar have different results. A lower FST generally gives more power, but it
 #it risks the possibility to be too strict and consequently *decreasing* power.
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 6648e4a67c3cf5404323bb0e9d48417de3dd50aa
+>>>>>>> e57c09f57a6b9e49ec35e1f39b46ea30adcf3d1d
 ## End(Not run)
 }
 \seealso{
