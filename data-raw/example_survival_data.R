@@ -7,8 +7,12 @@ seed.var = 1
 seed.var = seed.var + 1
 set.seed(seed.var)
 
+<<<<<<< HEAD
 
 (epistasis.snps <- c(2074, 2306))#sample(2000:2500, 2))
+=======
+(epistasis.snps <- sample(2000:2500, 2))
+>>>>>>> 6648e4a67c3cf5404323bb0e9d48417de3dd50aa
 subjects.subset <- 1:200
 covariates.subset <- 2000:2500
 check.cor <- c(epistasis.snps-1, epistasis.snps, epistasis.snps+1)
