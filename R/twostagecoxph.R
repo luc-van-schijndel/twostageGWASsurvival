@@ -57,10 +57,6 @@
 #' ## Not run:
 #' str(example_survival_data)
 #' str(example_snp_data)
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> e57c09f57a6b9e49ec35e1f39b46ea30adcf3d1d
 #'
 #' print(foo <- twostagecoxph(example_survival_data[1:100,], example_snp_data[1:100,1:300],
 #'                             first.stage.threshold = 1e-5))
@@ -70,11 +66,6 @@
 #'
 #' #as we can see, foo and bar have different results. A lower FST generally gives more power, but it
 #' #it risks the possibility to be too strict and consequently *decreasing* power.
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 6648e4a67c3cf5404323bb0e9d48417de3dd50aa
->>>>>>> e57c09f57a6b9e49ec35e1f39b46ea30adcf3d1d
 #' ## End(Not run)
 twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold = 0.05,
                           multiple.hypotheses.correction = "bonferroni", multicore = FALSE,
@@ -155,10 +146,6 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 
   report.lowest.amount = min(report.lowest.amount, sum(unique.p.values < 1, na.rm = TRUE))
   if(report.lowest.amount > 0){
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> e57c09f57a6b9e49ec35e1f39b46ea30adcf3d1d
     fifth.lowest.unique <- stats::quantile(unique.p.values,
                                     probs = report.lowest.amount/sum(!is.na(unique.p.values)),
                                     na.rm = TRUE)
@@ -181,11 +168,6 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 
     lowest.five <- lowest.five.dupl[!duplicated(lowest.five.dupl)] #this keeps the "names" attribute
 
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 6648e4a67c3cf5404323bb0e9d48417de3dd50aa
->>>>>>> e57c09f57a6b9e49ec35e1f39b46ea30adcf3d1d
     lowest.five <- sort(lowest.five, decreasing = FALSE)
     attr(lowest.five, "duplicate results") = as.integer(table(lowest.five.dupl) - 1) #the table was already sorted
 
@@ -486,19 +468,10 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
         }
 
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> e57c09f57a6b9e49ec35e1f39b46ea30adcf3d1d
         if(convergence.check(fitted.model, max.coef)){
           return.matrix[first.local.index, second.local.index] <-
             summary(fitted.model)$coefficients[3,5]
         }
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 6648e4a67c3cf5404323bb0e9d48417de3dd50aa
->>>>>>> e57c09f57a6b9e49ec35e1f39b46ea30adcf3d1d
 
         if(max((amount.rejections*(first.local.index-1) + second.local.index - first.local.index*(first.local.index+1)/2) %% progress == 0, FALSE, na.rm = TRUE)){
           progress.frac <- (amount.rejections*(first.local.index-1) + second.local.index - first.local.index*(first.local.index+1)/2)/(amount.rejections*(amount.rejections-1)/2)
@@ -734,14 +707,7 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
                                                  "clear.current.line"),
                                      .combine = c) %dopar% {
     this.process.indices = (matrix.indices.processes[,process.index])[!is.na(matrix.indices.processes[,process.index])]
-<<<<<<< HEAD
     if(length(this.process.indices) == 0) return(rep(NA, optimal.batchsize)) #if the batch is empty, return NA's
-=======
-<<<<<<< HEAD
-    if(length(this.process.indices) == 0) return(rep(NA, optimal.batchsize)) #if the batch is empty, return NA's
-=======
->>>>>>> 6648e4a67c3cf5404323bb0e9d48417de3dd50aa
->>>>>>> e57c09f57a6b9e49ec35e1f39b46ea30adcf3d1d
     this.process.p.values <- rep(NA, length(this.process.indices))
     for(covariate.index in 1:length(this.process.indices)){
       this.covariate <- covariate.matrix[, this.process.indices[covariate.index]]
@@ -765,14 +731,7 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
           summary(fitted.model)$coefficients[1, 5]
       }
       if(max(this.process.indices[covariate.index] %% progress == 0, FALSE, na.rm = TRUE)){
-<<<<<<< HEAD
         progress.frac <- this.process.indices[covariate.index]/no.covariates
-=======
-<<<<<<< HEAD
-        progress.frac <- this.process.indices[covariate.index]/no.covariates
-=======
->>>>>>> 6648e4a67c3cf5404323bb0e9d48417de3dd50aa
->>>>>>> e57c09f57a6b9e49ec35e1f39b46ea30adcf3d1d
         clear.current.line()
         cat("\r", "First stage is at ", round(progress.frac*100, digits = 0), "% progress. ",
             "Estimated time until completion first stage: ",
@@ -823,14 +782,7 @@ clear.current.line <- function(){
 #'                            nrow = 10, ncol = 3, byrow = TRUE)
 #' twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
 print.twostageGWAS <- function(x, ...){
-<<<<<<< HEAD
   #if(class(x) != "twostageGWAS") stop("class must be twostageGWAS")
-=======
-<<<<<<< HEAD
-  #if(class(x) != "twostageGWAS") stop("class must be twostageGWAS")
-=======
->>>>>>> 6648e4a67c3cf5404323bb0e9d48417de3dd50aa
->>>>>>> e57c09f57a6b9e49ec35e1f39b46ea30adcf3d1d
   cat("\nCall:\n",
     paste(deparse(x$call), sep = "\n", collapse = "\n"), "\n\n", sep = "", ...)
   cat(length(x$marginal.significant), " covariates were marginally significant at level ",
