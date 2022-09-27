@@ -5,21 +5,13 @@
 \alias{example_snp_data}
 \title{Simulated example dataset of SNPs obtained during a GWAS}
 \format{
-A data frame with 53940 rows and 10 variables:
-\describe{
-\item{price}{price, in US dollars}
-\item{carat}{weight of the diamond, in carats}
-...
-}
-}
-\source{
-\url{http://www.diamondse.info/}
+A matrix with 200 rows and 300 variables with integer values being either 0, 1 or 2.
 }
 \usage{
 example_snp_data
 }
 \description{
-A dataset containing the prices and other attributes of almost 54,000
-diamonds.
+A dataset containing the numeric interpretation of 500 SNPs from 200 simulated humans. Both
+dimensions have a number-based names attribute.
 }
 \keyword{datasets}

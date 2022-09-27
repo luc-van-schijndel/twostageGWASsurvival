@@ -7,14 +7,10 @@ seed.var = 1
 seed.var = seed.var + 1
 set.seed(seed.var)
 
-<<<<<<< HEAD
 
 (epistasis.snps <- c(2074, 2306))#sample(2000:2500, 2))
-=======
-(epistasis.snps <- sample(2000:2500, 2))
->>>>>>> 6648e4a67c3cf5404323bb0e9d48417de3dd50aa
 subjects.subset <- 1:200
-covariates.subset <- 2000:2500
+covariates.subset <- 2001:2500
 check.cor <- c(epistasis.snps-1, epistasis.snps, epistasis.snps+1)
 stats::cor(example.snp.data[,check.cor])
 set.seed(37 * 42)
@@ -41,7 +37,7 @@ example_snp_data <- as.matrix(example.snp.data[subjects.subset, covariates.subse
                                 list(subject.numbers = 1:dim(example.snp.data)[1],
                                      snp.names = attr(example.snp.data, "names")[[2]]))
 
-foo <- twostagecoxph(example_survival_data, example_snp_data, progress = 50, first.stage.threshold = 0.0001)
+foo <- twostagecoxph(example_survival_data, example_snp_data, control = twostagecoxph.control(progress = 50), first.stage.threshold = 0.0001)
 print(foo)
 
 usethis::use_data(example_survival_data, compress = "bzip2", overwrite = TRUE)

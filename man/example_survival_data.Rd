@@ -5,18 +5,18 @@
 \alias{example_survival_data}
 \title{Simulated example dataset for a survival GWAS}
 \format{
-A data frame with 53940 rows and 10 variables:
+A Surv-class object with 200 rows and 2 variables:
 \describe{
-\item{price}{price, in US dollars}
-\item{carat}{weight of the diamond, in carats}
-...
+\item{time}{the time until the event took place}
+\item{status}{indicator whether or not the subject was censored. 1 if the event was observed.}
 }
 }
 \usage{
 example_survival_data
 }
 \description{
-A dataset containing the prices and other attributes of almost 54,000
-diamonds.
+A dataset containing time-to-event outcomes for 200 subjects, simulated from a proportional
+hazards model with one interaction increasing the hazard. The censoring times have a uniform
+distribution.
 }
 \keyword{datasets}

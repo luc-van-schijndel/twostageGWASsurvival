@@ -3,5 +3,6 @@
 S3method(print,twostageGWAS)
 export(optimal.batch.configuration)
 export(twostagecoxph)
+export(twostagecoxph.control)
 importFrom(foreach,"%dopar%")
 importFrom(survival,coxph)

@@ -1,24 +1,24 @@
-#*check new implementation of multicore.first stage
-#*
 #*batch making for multicore, either by file or by subsetting
+#*
+#*check which calls to functions are made in double-for loops, and remove :: operators by importFrom-ing
 #*
 #*allow for the option of never having the full covariate matrix loaded in memory. Instead reading
 #*bit by bit from files.
 #*
 #*Additional return info (D, I think? No more can be reasonably added?)
 #*
-#*large dataset. Make good example from this.
+#*large dataset. Make good example from this. (D)
 #*
 #*Non-convergence checks (partially done?)
 #*
-#*Edge-case handling
+#*Edge-case handling (partially done?)
 #*
 #*Coxph properly calling
 #*Requires a lot of manual setting of parameters. Not worth the effort I think.
 #*
 #*Document datasets
 #*
-#*Parallel computing
+#*Parallel computing (D)
 #*
 #*Consider reparameterization of double for-loop in second stage: iterate over "relevant.indices"?
 #*It seems as if the double for-loop is faster. (D)
