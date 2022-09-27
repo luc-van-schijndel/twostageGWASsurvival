@@ -31,5 +31,5 @@ covariate.matrix <- matrix(c(2,2,1,
                              1,0,0,
                              0,0,0),
                            nrow = 10, ncol = 3, byrow = TRUE)
-twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
+twostagecoxph(survival.dataset, covariate.matrix, control = twostagecoxph.control(progress = 0))
 }

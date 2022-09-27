@@ -10,13 +10,8 @@ twostagecoxph(
   first.stage.threshold = 0.05,
   multiple.hypotheses.correction = "bonferroni",
   multicore = FALSE,
-  report.lowest.amount = 5,
-  return.raw = FALSE,
-  progress = 1000,
-  max.coef = 5,
-  max.batchsize = 1000,
   updatefile = "",
-  upper.bound.correlation = 0.95
+  control = twostagecoxph.control()
 )
 }
 \arguments{
@@ -32,30 +27,12 @@ has a p-value lower than this threshold, it will be passed on to the second stag
 \item{multicore}{logical, default FALSE; whether or not the function should use multiple cores
 in its calculations. See Details.}
 
-\item{report.lowest.amount}{integer scalar denoting how many of the most significant interactions
-the function should report}
-
-\item{return.raw}{logical, default FALSE; whether or not the output should contain the raw p-values or
-the multiple hypotheses corrected p-values.}
-
-\item{progress}{numeric, default 1000;  how many iterations should pass silently until an update is given
-about runtime and progress until completion of stages. Set to 0 for no output.}
-
-\item{max.coef}{numeric, default 5; maximum value for all coefficients in the fitted models. If any
-are larger than this (in absolute value), then the model rejected and ignored in
-further analysis.}
-
-\item{max.batchsize}{maximum size of one batch, default 1000; for parallel computing,
-should be lowered if issues arise concerning memory. Can be raised
-to slightly increase performance}
-
 \item{updatefile}{path to a text file where updates may be written. Necessary for parallel
 computations, since the connection to the terminal will be lost. This
 file will serve as a stand in for the terminal.}
 
-\item{upper.bound.correlation}{numeric; the upper bound on the correlation between two
-covariates. If exceeded (in absolute value), the model
-is not fitted.}
+\item{control}{Object of class twostagecoxph.control specifying various options for performance
+of the two stage method. Default is twostagecoxph.control()}
 }
 \value{
 a twostageGWAS object; a list of 5 entries: stuff
@@ -81,29 +58,20 @@ covariate.matrix <- matrix(c(2,2,1,
                              1,0,0,
                              0,0,0),
                            nrow = 10, ncol = 3, byrow = TRUE)
-twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
+twostagecoxph(survival.dataset, covariate.matrix, control = twostagecoxph.control(progress = 0))
 
 ## Not run:
 str(example_survival_data)
 str(example_snp_data)
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> e57c09f57a6b9e49ec35e1f39b46ea30adcf3d1d
 
-print(foo <- twostagecoxph(example_survival_data[1:100,], example_snp_data[1:100,1:300],
+print(foo <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
                             first.stage.threshold = 1e-5))
-print(bar <- twostagecoxph(example_survival_data[1:100,], example_snp_data[1:100,1:300],
+print(bar <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
                             first.stage.threshold = 1e-4))
-#[1:100,1:300] subsetting is added to speed up the example. Try removing it! :)
+#[,1:300] subsetting is added to speed up the example. Try removing it! :)
 
 #as we can see, foo and bar have different results. A lower FST generally gives more power, but it
 #it risks the possibility to be too strict and consequently *decreasing* power.
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 6648e4a67c3cf5404323bb0e9d48417de3dd50aa
->>>>>>> e57c09f57a6b9e49ec35e1f39b46ea30adcf3d1d
 ## End(Not run)
 }
 \seealso{

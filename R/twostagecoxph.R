@@ -9,24 +9,11 @@
 #' @param multiple.hypotheses.correction Correction method, a character string. Passed to stats::p.adjust
 #' @param multicore logical, default FALSE; whether or not the function should use multiple cores
 #'                    in its calculations. See Details.
-#' @param report.lowest.amount integer scalar denoting how many of the most significant interactions
-#'                               the function should report
-#' @param return.raw logical, default FALSE; whether or not the output should contain the raw p-values or
-#'                     the multiple hypotheses corrected p-values.
-#' @param progress numeric, default 1000;  how many iterations should pass silently until an update is given
-#'                   about runtime and progress until completion of stages. Set to 0 for no output.
-#' @param max.coef numeric, default 5; maximum value for all coefficients in the fitted models. If any
-#'                   are larger than this (in absolute value), then the model rejected and ignored in
-#'                   further analysis.
 #' @param updatefile path to a text file where updates may be written. Necessary for parallel
 #'                     computations, since the connection to the terminal will be lost. This
 #'                     file will serve as a stand in for the terminal.
-#' @param upper.bound.correlation numeric; the upper bound on the correlation between two
-#'                                  covariates. If exceeded (in absolute value), the model
-#'                                  is not fitted.
-#' @param max.batchsize maximum size of one batch, default 1000; for parallel computing,
-#'                        should be lowered if issues arise concerning memory. Can be raised
-#'                        to slightly increase performance
+#' @param control Object of class twostagecoxph.control specifying various options for performance
+#'                  of the two stage method. Default is twostagecoxph.control()
 #'
 #' @return a twostageGWAS object; a list of 5 entries: stuff
 #' @export
@@ -52,26 +39,31 @@
 #'                              1,0,0,
 #'                              0,0,0),
 #'                            nrow = 10, ncol = 3, byrow = TRUE)
-#' twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
+#' twostagecoxph(survival.dataset, covariate.matrix, control = twostagecoxph.control(progress = 0))
 #'
 #' ## Not run:
 #' str(example_survival_data)
 #' str(example_snp_data)
 #'
-#' print(foo <- twostagecoxph(example_survival_data[1:100,], example_snp_data[1:100,1:300],
+#' print(foo <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
 #'                             first.stage.threshold = 1e-5))
-#' print(bar <- twostagecoxph(example_survival_data[1:100,], example_snp_data[1:100,1:300],
+#' print(bar <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
 #'                             first.stage.threshold = 1e-4))
-#' #[1:100,1:300] subsetting is added to speed up the example. Try removing it! :)
+#' #[,1:300] subsetting is added to speed up the example. Try removing it! :)
 #'
 #' #as we can see, foo and bar have different results. A lower FST generally gives more power, but it
 #' #it risks the possibility to be too strict and consequently *decreasing* power.
 #' ## End(Not run)
 twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold = 0.05,
                           multiple.hypotheses.correction = "bonferroni", multicore = FALSE,
-                          report.lowest.amount = 5, return.raw = FALSE,
-                          progress = 1000, max.coef = 5, max.batchsize = 1000,
-                          updatefile = "", upper.bound.correlation = 0.95){
+                          updatefile = "", control = twostagecoxph.control()){
+  report.lowest.amount = control$report.lowest.amount
+  return.raw = control$return.raw
+  progress = control$progress
+  max.coef = control$max.coef
+  max.batchsize = control$max.batchsize
+  upper.bound.correlation = control$upper.bound.correlation
+
   # first.stage.threshold = 0.05; multiple.hypotheses.correction = "bonferroni"; multicore = FALSE; report.lowest.amount = 5; return.raw = FALSE; progress = 0; max.coef = 5; max.batchsize = 1000; updatefile = ""; upper.bound.correlation = 0.95
   if(!survival::is.Surv(survival.dataset)) stop("survival.dataset must be a Surv object")
   if(!is.matrix(covariate.matrix)) stop("covariate.matrix must be a (strict) matrix")
@@ -188,6 +180,9 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   total.runtime <- proc.time()[3] - start.time
   names(total.runtime) = c("seconds")
 
+  clear.current.line()
+  cat("\rAnalysis completed. Runtime:", total.runtime)
+
   return.object <- list(most.significant.results = lowest.five.list,
                         p.value.matrix = ts.output$second.stage.sparse.matrix,
                         marginal.significant = ts.output$passed.indices,
@@ -199,6 +194,56 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 
   return.object
 
+}
+
+#' Ancillary arguments for controlling the operation of the two stage method using twostagecoxph
+#'
+#' @description This is used to set various numeric parameters controlling the operation of the
+#'                two stage method performed by \code{twostagecoxph}. Typically it would only be used
+#'                in a call to \code{twostagecoxph}.
+#'
+#' @param report.lowest.amount integer, default 5; denotes how many of the most significant interactions
+#'                               the function should report. Altering this value does
+#'                               not affect the maximum reported by the print.twostageGWAS function
+#' @param return.raw logical, default FALSE; whether or not the output should contain the raw p-values or
+#'                     the multiple hypotheses corrected p-values.
+#' @param progress numeric, default 1000;  how many iterations should pass silently until an update is given
+#'                   about runtime and progress until completion of stages. Set to 0 for no output.
+#' @param max.coef numeric, default 5; maximum value for all coefficients in the fitted models. If any
+#'                   are larger than this (in absolute value), then the model rejected and ignored in
+#'                   further analysis.
+#' @param upper.bound.correlation numeric; the upper bound on the correlation between two
+#'                                  covariates. If exceeded (in absolute value), the model
+#'                                  is not fitted.
+#' @param max.batchsize maximum size of one batch, default 1000; for parallel computing,
+#'                        should be lowered if issues arise concerning memory. Can be raised
+#'                        to slightly increase performance
+#'
+#' @return a list containing the values of each of the above constants.
+#' @export
+#'
+twostagecoxph.control <- function(report.lowest.amount = 5, return.raw = FALSE, progress = 1000,
+                                  max.coef = 5, max.batchsize = 1000, upper.bound.correlation = 0.9){
+  if((!is.numeric(report.lowest.amount)) ||
+     (trunc(report.lowest.amount) != report.lowest.amount)[1] ||
+     (length(report.lowest.amount) != 1)) stop("report.lowest.amount must be an integer scalar")
+  if(!is.numeric(progress) ||
+     (trunc(progress) != progress)[1] ||
+     length(progress) != 1) stop("progress must be an integer scalar")
+  if(!is.numeric(max.coef) ||
+     (trunc(max.coef) != max.coef)[1] ||
+     length(max.coef) != 1) stop("max.coef must be an integer scalar")
+  if(!is.numeric(max.batchsize) ||
+     (trunc(max.batchsize) != max.batchsize)[1] ||
+     length(max.batchsize) != 1) stop("max.batchsize must be an integer scalar")
+  if(!is.numeric(upper.bound.correlation) ||
+     (upper.bound.correlation[1] < 0 || upper.bound.correlation[1] > 1) ||
+     length(upper.bound.correlation) != 1) stop("upper.bound.correlation must be an double scalar in the interval [0,1]")
+  if(!is.logical(return.raw) || length(return.raw) != 1) stop("return.raw must be a logical scalar")
+  if(max.batchsize < 2) stop("max.batchsize must be 2 or greater")
+
+  return(list(report.lowest.amount = report.lowest.amount, return.raw = return.raw, progress = progress,
+              max.coef = max.coef, max.batchsize = max.batchsize, upper.bound.correlation = upper.bound.correlation))
 }
 
 prefitting.check.one <- function(covariate) {
@@ -780,9 +825,10 @@ clear.current.line <- function(){
 #'                              1,0,0,
 #'                              0,0,0),
 #'                            nrow = 10, ncol = 3, byrow = TRUE)
-#' twostagecoxph(survival.dataset, covariate.matrix, progress = 0)
+#' twostagecoxph(survival.dataset, covariate.matrix, control = twostagecoxph.control(progress = 0))
 print.twostageGWAS <- function(x, ...){
   #if(class(x) != "twostageGWAS") stop("class must be twostageGWAS")
+  clear.current.line()
   cat("\nCall:\n",
     paste(deparse(x$call), sep = "\n", collapse = "\n"), "\n\n", sep = "", ...)
   cat(length(x$marginal.significant), " covariates were marginally significant at level ",
@@ -803,6 +849,6 @@ print.twostageGWAS <- function(x, ...){
                             byrow = TRUE)
     print.default(format(format.matrix, drop0trailing = TRUE, digits = min(6L, getOption("digits"))), quote = FALSE, ...)
   }
-  cat("\n")
+  cat("\n", ...)
   invisible(x)
 }

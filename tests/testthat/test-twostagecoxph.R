@@ -22,9 +22,7 @@ test_that("Wrong input objects give errors", {
                                1,0,0,
                                0,0,0),
                              nrow = 10, ncol = 3, byrow = TRUE)
-  expect_warning(twostagecoxph(survival.dataset, t(covariate.matrix), progress = 0), "Transposed")
-  expect_warning(twostagecoxph(survival.dataset, covariate.matrix, report.lowest.amount = 9.5, progress = 0), "integer")
-  expect_error(twostagecoxph(survival.dataset, covariate.matrix, max.batchsize = 1), "2 or greater")
+  expect_warning(twostagecoxph(survival.dataset, t(covariate.matrix), control = twostagecoxph.control(progress = 0)), "Transposed")
 
 })
 
@@ -49,8 +47,18 @@ test_that("Incorrect first.stage.threshold input gives errors", {
   expect_error(twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 1), "decreasing")
   expect_error(twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0), "increasing")
 
-  expect_warning(twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 1e-7, progress = 0), "No rejections")
-  expect_warning(twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0.01, progress = 0), "one rejection") #the first stage p-values are 0.008, 0.013 and 0.015
+  expect_warning(twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 1e-7, control = twostagecoxph.control(progress = 0)), "No rejections")
+  expect_warning(twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0.01, control = twostagecoxph.control(progress = 0)), "one rejection") #the first stage p-values are 0.008, 0.013 and 0.015
+})
+
+test_that("Wrong input gives errors for control function", {
+  expect_error(twostagecoxph.control(report.lowest.amount = c(1,2)), "integer scalar")
+  expect_error(twostagecoxph.control(return.raw = c(FALSE,FALSE)), "logical scalar")
+  expect_error(twostagecoxph.control(progress = c(1,2)), "integer scalar")
+  expect_error(twostagecoxph.control(max.coef = c(1,2)), "integer scalar")
+  expect_error(twostagecoxph.control(max.batchsize = c(1,2)), "integer scalar")
+  expect_error(twostagecoxph.control(upper.bound.correlation = c(1,2)), "double scalar")
+  expect_error(twostagecoxph.control(max.batchsize = 1), "2 or greater")
 })
 
 #Proper (numeric) outputs=======================
@@ -103,7 +111,7 @@ test_that("Outputs are the p-values we expect", {
                expected.first.stage,
                tolerance = 1e-7)
 
-
+  #code used to obtain constants in the following section:
   #(c(summary(survival::coxph(survival.dataset ~ covariate.matrix[,1]*covariate.matrix[,2]))$coef[3,5],
   #   summary(survival::coxph(survival.dataset ~ covariate.matrix[,1]*covariate.matrix[,3]))$coef[3,5],
   #   summary(survival::coxph(survival.dataset ~ covariate.matrix[,2]*covariate.matrix[,3]))$coef[3,5]))
@@ -118,21 +126,26 @@ test_that("Outputs are the p-values we expect", {
                expected.second.stage,
                tolerance = 1e-7)
 
-  expect_equal(twostagecoxph(survival.dataset, covariate.matrix, return.raw = TRUE, progress = 0)$p.value.matrix,
+  expect_equal(twostagecoxph(survival.dataset, covariate.matrix,
+                             control = twostagecoxph.control(progress = 0, return.raw = TRUE,
+                                                             upper.bound.correlation = 0.95))$p.value.matrix,
                Matrix::sparseMatrix(i = c(1,1,2), j = c(2,3,3),
                                     x = c(0.29283645, 0.76400342, 0.09613708),
                                     triangular = TRUE),
                tolerance = 1e-7)
 
   #3x the previous (maximum 1)
-  expect_equal(twostagecoxph(survival.dataset, covariate.matrix, progress = 0)$p.value.matrix,
+  expect_equal(twostagecoxph(survival.dataset, covariate.matrix,
+                             control = twostagecoxph.control(progress = 0, upper.bound.correlation = 0.95))$p.value.matrix,
                Matrix::sparseMatrix(i = c(1,1,2), j = c(2,3,3),
                                     x = c(0.8785094, 1, 0.2884112),
                                     triangular = TRUE),
                tolerance = 1e-7)
 
   #highest = raw, 2nd = 2x and lowest = 3x of the raw p-values
-  expect_equal(twostagecoxph(survival.dataset, covariate.matrix, multiple.hypotheses.correction = "hochberg", progress = 0)$p.value.matrix,
+  expect_equal(twostagecoxph(survival.dataset, covariate.matrix,
+                             multiple.hypotheses.correction = "hochberg",
+                             control = twostagecoxph.control(progress = 0, upper.bound.correlation = 0.95))$p.value.matrix,
                Matrix::sparseMatrix(i = c(1,1,2), j = c(2,3,3),
                                     x = c(0.58567291, 0.76400342, 0.2884112),
                                     triangular = TRUE),
