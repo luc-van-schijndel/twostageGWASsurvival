@@ -1,6 +1,6 @@
 #' (WIP) Perform a two stage analysis on a survival dataset to detect epistasis
 #'
-#' Work in progress. Only the most basic functionality works.
+#' Work in progress. Only basic functionality works.
 #'
 #' @param survival.dataset The survival dataset describing the outcome.
 #' @param covariate.matrix The nxp-matrix of covariates of the p covariates of the n patients.
@@ -15,15 +15,43 @@
 #' @param control Object of class twostagecoxph.control specifying various options for performance
 #'                  of the two stage method. Default is twostagecoxph.control()
 #'
-#' @return a twostageGWAS object; a list of 5 entries: stuff
+#' @return A twostageGWAS object which is a list of 7 entries:
+#'   \item{most.significant.results}{A list describing the most significant results found. The
+#'   number of results reported is specified by the control parameter, default 5. The
+#'   list contains 3 items:
+#'   \describe{
+#'     \item{\code{interacting.snps}}{the names of the interaction, in "name_snp_1 x name_snp_2" format.
+#'     In case the covariates in \code{covariate.matrix} have a names attribute, these names are used.
+#'     Otherwise the index of the covariates within the matrix is used.}
+#'     \item{\code{p.value.epistasis}}{the corresponding p-values of the interactions. Unless \code{return.raw = TRUE}
+#'     is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
+#'     tested with the method specified by the \code{multiple.hypotheses.correction} parameter.}
+#'     \item{\code{duplicate.interactions}}{the list of duplicate interactions found, corresponding to
+#'     the interactions specified in this list. An interaction is said to be duplicate if the corresponding
+#'     p-value is the same up until 7 significant figures. }
+#'   }}
+#'   \item{p.value.matrix}{A \code{sparseMatrix} from the package "Matrix", specifying the resulting
+#'   upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
+#'     is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
+#'     tested with the method specified by the \code{multiple.hypotheses.correction} parameter.}
+#'   \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
+#'   were found to be marginally significant in the first stage. }
+#'   \item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
+#'   are \emph{not} corrected for the multiple tested hypotheses. }
+#'   \item{fst}{The threshold for significance used in the first stage as specified in \code{first.stage.threshold}}
+#'   \item{runtime}{The total runtime of the function in seconds.}
+#'   \item{call}{The matched call.}
 #' @export
 #'
 #' @note Parallel processing requires a properly registered parallel back-end, such as one obtained
-#'         from "doParallel::registerDoParallel(2)"
+#'         from "doParallel::registerDoParallel(2)" to be used by \code{foreach} and the \code{%dopar%} binary operator.
 #'
-#' @seealso print.twostageGWAS()
+#' @seealso \code{\link{foreach}}, \code{\link{print.twostageGWAS}}, \code{\link{twostagecoxph.control}}
+#'
 #' @importFrom survival coxph
 #' @importFrom foreach %dopar%
+#' @importFrom stats cor
+#' @importFrom stats var
 #'
 #' @examples
 #' survival.dataset <- survival::Surv(c(5,5,3,3,2,2,2,1,1,1),
@@ -41,7 +69,6 @@
 #'                            nrow = 10, ncol = 3, byrow = TRUE)
 #' twostagecoxph(survival.dataset, covariate.matrix, control = twostagecoxph.control(progress = 0))
 #'
-#' ## Not run:
 #' str(example_survival_data)
 #' str(example_snp_data)
 #'
@@ -51,9 +78,8 @@
 #'                             first.stage.threshold = 1e-4))
 #' #[,1:300] subsetting is added to speed up the example. Try removing it! :)
 #'
-#' #as we can see, foo and bar have different results. A lower FST generally gives more power, but it
-#' #it risks the possibility to be too strict and consequently *decreasing* power.
-#' ## End(Not run)
+#' # As we can see, foo and bar have different results. A lower FST generally gives more power, but it
+#' # it risks the possibility to be too strict and consequently *decreasing* power.
 twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold = 0.05,
                           multiple.hypotheses.correction = "bonferroni", multicore = FALSE,
                           updatefile = "", control = twostagecoxph.control()){
@@ -332,7 +358,7 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
       if(prefitting.check.two(covariate.one, covariate.two, upper.bound.correlation)) {
         tryCatch(
           fitted.model <-
-            survival::coxph(survival.dataset ~ covariate.one * covariate.two),
+            coxph(survival.dataset ~ covariate.one * covariate.two),
           warning = function(w) {
             if (grepl("coefficient may be infinite", w$message)) {
               #print("An error was given, which is taken into account in convergence.check")
@@ -498,7 +524,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
         if(prefitting.check.two(covariate.one, covariate.two, upper.bound.correlation)){
           tryCatch(
             fitted.model <-
-              survival::coxph(survival.dataset ~ covariate.one * covariate.two),
+              coxph(survival.dataset ~ covariate.one * covariate.two),
             warning = function(w) {
               if (grepl("coefficient may be infinite.", w$message)) {
                 #print("An error was given, which is taken into account in convergence.check")
@@ -552,7 +578,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
             if(prefitting.check.two(covariate.one, covariate.two, upper.bound.correlation)){
               tryCatch(
                 fitted.model <-
-                  survival::coxph(survival.dataset ~ covariate.one * covariate.two),
+                  coxph(survival.dataset ~ covariate.one * covariate.two),
                 warning = function(w) {
                   if (grepl("coefficient may be infinite.", w$message)) {
                     #print("An error was given, which is taken into account in convergence.check")
@@ -602,55 +628,6 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
   return(list(second.stage.sparse.matrix = second.stage.sparse.matrix, passed.indices = passed.indices,
               first.stage.p.values = first.stage.result))
 }
-#   for (first.index in 1:(amount.rejections-1)){
-#     for (second.index in (first.index+1):amount.rejections){
-#       index.first.covariate  <- passed.indices[first.index]
-#       index.second.covariate <- passed.indices[second.index]
-#       covariate.one <- covariate.matrix[, index.first.covariate]
-#       covariate.two <- covariate.matrix[, index.second.covariate]
-#       if(prefitting.check.two(covariate.one, covariate.two, upper.bound.correlation)){
-#         tryCatch(
-#           fitted.model <-
-#             survival::coxph(survival.dataset ~ covariate.one * covariate.two),
-#           warning = function(w) {
-#             if (grepl("coefficient may be infinite.", w$message)) {
-#               #print("An error was given, which is taken into account in convergence.check")
-#             } else if (grepl("out of iterations", w$message)) {
-#               #print("An error was given, which is taken into account in convergence.check")
-#             }
-#             else {
-#               message(w$message)
-#             }
-#           }
-#         )
-#       }
-#
-#
-#       if(convergence.check(fitted.model, max.coef)){
-#         second.stage.sparse.matrix[index.first.covariate, index.second.covariate] <-
-#           summary(fitted.model)$coefficients[3,5]
-#       }
-#
-#       if(max((amount.rejections*(first.index-1) + second.index - first.index*(first.index+1)/2) %% progress == 0, FALSE, na.rm = TRUE)){
-#         progress.frac <- (amount.rejections*(first.index-1) + second.index - first.index*(first.index+1)/2)/(amount.rejections*(amount.rejections-1)/2)
-#
-#         estimated.seconds <- (1-progress.frac)/progress.frac*(proc.time()[3] - start.time.second.stage)
-#         text.estimated.time <- ""
-#         if(estimated.seconds >=3600) text.estimated.time = paste0(round(estimated.seconds/3600, digits = 1), " hours.")
-#         if(estimated.seconds < 3600) text.estimated.time = paste0(round(estimated.seconds/60, digits = 1), " minutes.")
-#         if(estimated.seconds < 60)   text.estimated.time = "less than a minute."
-#         clear.current.line()
-#         cat("\rSecond stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
-#             "Estimated time until completion: ",
-#             text.estimated.time, sep = "")
-#         utils::flush.console()
-#       }
-#     }
-#   }
-#
-#   return(list(second.stage.sparse.matrix = second.stage.sparse.matrix, passed.indices = passed.indices,
-#               first.stage.p.values = first.stage.result))
-# }
 
 
 firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, max.coef = 5){
@@ -660,7 +637,7 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
     this.covariate <- covariate.matrix[, covariate.index]
     if(prefitting.check.one(this.covariate)){
       tryCatch(
-        fitted.model <- survival::coxph(survival.dataset ~ this.covariate),
+        fitted.model <- coxph(survival.dataset ~ this.covariate),
         warning = function(w) {
           if (grepl("coefficient may be infinite.", w$message)) {
             #print("An error was given, which is taken into account in convergence.check")
@@ -803,10 +780,12 @@ clear.current.line <- function(){
   utils::flush.console()
 }
 
-#' Print method for twostage object
+#' Print method for twostageGWAS objects
 #'
+#' @usage \method{print}{twostageGWAS}(x, \ldots)
 #' @param x object of class twostageGWAS
 #' @param ... optional arguments passed on to cat and print.default functions.
+#'
 #'
 #' @return The twostageGWAS object invisibly
 #' @export

@@ -35,14 +35,39 @@ file will serve as a stand in for the terminal.}
 of the two stage method. Default is twostagecoxph.control()}
 }
 \value{
-a twostageGWAS object; a list of 5 entries: stuff
+A twostageGWAS object which is a list of 7 entries:
+\item{most.significant.results}{A list describing the most significant results found. The
+number of results reported is specified by the control parameter, default 5. The
+list contains 3 items:
+\describe{
+\item{\code{interacting.snps}}{the names of the interaction, in "name_snp_1 x name_snp_2" format.
+In case the covariates in \code{covariate.matrix} have a names attribute, these names are used.
+Otherwise the index of the covariates within the matrix is used.}
+\item{\code{p.value.epistasis}}{the corresponding p-values of the interactions. Unless \code{return.raw = TRUE}
+is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
+tested with the method specified by the \code{multiple.hypotheses.correction} parameter.}
+\item{\code{duplicate.interactions}}{the list of duplicate interactions found, corresponding to
+the interactions specified in this list. An interaction is said to be duplicate if the corresponding
+p-value is the same up until 7 significant figures. }
+}}
+\item{p.value.matrix}{A \code{sparseMatrix} from the package "Matrix", specifying the resulting
+upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
+is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
+tested with the method specified by the \code{multiple.hypotheses.correction} parameter.}
+\item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
+were found to be marginally significant in the first stage. }
+\item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
+are \emph{not} corrected for the multiple tested hypotheses. }
+\item{fst}{The threshold for significance used in the first stage as specified in \code{first.stage.threshold}}
+\item{runtime}{The total runtime of the function in seconds.}
+\item{call}{The matched call.}
 }
 \description{
-Work in progress. Only the most basic functionality works.
+Work in progress. Only basic functionality works.
 }
 \note{
 Parallel processing requires a properly registered parallel back-end, such as one obtained
-from "doParallel::registerDoParallel(2)"
+from "doParallel::registerDoParallel(2)" to be used by \code{foreach} and the \code{\%dopar\%} binary operator.
 }
 \examples{
 survival.dataset <- survival::Surv(c(5,5,3,3,2,2,2,1,1,1),
@@ -60,7 +85,6 @@ covariate.matrix <- matrix(c(2,2,1,
                            nrow = 10, ncol = 3, byrow = TRUE)
 twostagecoxph(survival.dataset, covariate.matrix, control = twostagecoxph.control(progress = 0))
 
-## Not run:
 str(example_survival_data)
 str(example_snp_data)
 
@@ -70,10 +94,9 @@ print(bar <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
                             first.stage.threshold = 1e-4))
 #[,1:300] subsetting is added to speed up the example. Try removing it! :)
 
-#as we can see, foo and bar have different results. A lower FST generally gives more power, but it
-#it risks the possibility to be too strict and consequently *decreasing* power.
-## End(Not run)
+# As we can see, foo and bar have different results. A lower FST generally gives more power, but it
+# it risks the possibility to be too strict and consequently *decreasing* power.
 }
 \seealso{
-print.twostageGWAS()
+\code{\link{foreach}}, \code{\link{print.twostageGWAS}}, \code{\link{twostagecoxph.control}}
 }

@@ -2,9 +2,9 @@
 % Please edit documentation in R/twostagecoxph.R
 \name{print.twostageGWAS}
 \alias{print.twostageGWAS}
-\title{Print method for twostage object}
+\title{Print method for twostageGWAS objects}
 \usage{
-\method{print}{twostageGWAS}(x, ...)
+\method{print}{twostageGWAS}(x, \ldots)
 }
 \arguments{
 \item{x}{object of class twostageGWAS}
@@ -15,7 +15,7 @@
 The twostageGWAS object invisibly
 }
 \description{
-Print method for twostage object
+Print method for twostageGWAS objects
 }
 \examples{
 survival.dataset <- survival::Surv(c(5,5,3,3,2,2,2,1,1,1),
