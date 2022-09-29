@@ -113,7 +113,6 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
       stop("first.stage.threshold is 0, consider increasing this. The two stage method is not suitable for this. \n     'You Shall Not Pass!' - Gandalf the Grey")
   }
 
-  if(multicore != FALSE) stop("Package currently does not support parallel processing")
 
   if(abs(report.lowest.amount - round(report.lowest.amount)) > .Machine$double.eps^0.5 || report.lowest.amount < 1)
     warning("report.lowest.amount must be non-negative integer. Rounding up to non-negative integer")
