@@ -22,7 +22,7 @@ twostagecoxph(
 \item{first.stage.threshold}{numeric scalar denoting the threshold for the first stage. If a covariate
 is marginally more significant than this threshold, it will be passed on to the second stage.}
 
-\item{multiple.hypotheses.correction}{Correction method, a character string. Passed to \code{\link{stats::p.adjust}}.}
+\item{multiple.hypotheses.correction}{Correction method, a character string. Passed to \code{\link{p.adjust}}.}
 
 \item{multicore}{logical, default FALSE; whether or not the function should use multiple cores
 in its calculations. See Details.}
@@ -35,7 +35,7 @@ file will in that case serve as a stand-in for the terminal.}
 of the two stage method.}
 }
 \value{
-A twostageGWAS object which is a list of 7 entries:
+An object of class \code{twostageGWAS}, which is a list of 7 entries:
 \item{most.significant.results}{A list describing the most significant results found. The
 number of results reported is specified by the control parameter, default 5. The
 list contains 3 items:
@@ -71,25 +71,22 @@ pairs of covariates from the ones found to be marginally significant are then te
 interaction effect.
 }
 \details{
-It is shown in \link{1} that the two stages are independent of eachother. This results in
+It is shown in  that the two stages are independent of eachother. This results in
 proper control of rate of type I errors by the multiple hypotheses correction method.
 The power is also increased compared to a naive method, due to the fact that less
 hypotheses are tested in the second stage resulting in a less strict correction.
 The main advantage is that only a fraction of the possible interactions is tested,
-resulting in an enourmous decrease in computation times.
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{       If \code{multicore} is TRUE, the function assumes a proper parallel back-end is registered,
-       e.g. one obtained from doParallel::registerDoParallel(2), to be used by \code{foreach} and \code\{\%doPar\%\}.
-
-       If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.
-       This function gives the user control in which parts of the set of covariates will
-       be in active memory, allowing for better memory management. This does require the
-       user to make its own partition of the covariates into separate files.
-}\if{html}{\out{</div>}}
+resulting in an enourmous decrease in computation times. \cr \cr
+If \code{multicore} is \code{TRUE}, the function assumes a proper parallel back-end is registered,
+e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by \code{foreach} and \code{\%doPar\%}. \cr \cr
+If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.
+This function gives the user control in which parts of the set of covariates will
+be in active memory, allowing for better memory management. This does require the
+user to make its own partition of the covariates into separate files.
 }
 \note{
 Parallel processing requires a properly registered parallel back-end, such as one obtained
-from "doParallel::registerDoParallel(2)" to be used by \code{foreach} and the \code{\%dopar\%} binary operator.
+from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the \code{\%dopar\%} binary operator.
 }
 \examples{
 survival.dataset <- survival::Surv(c(5,5,3,3,2,2,2,1,1,1),

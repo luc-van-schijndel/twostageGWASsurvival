@@ -11,7 +11,7 @@
 #' @param covariate.matrix The nxp-matrix of covariates of the p covariates of the n patients. The dimensions may be named.
 #' @param first.stage.threshold numeric scalar denoting the threshold for the first stage. If a covariate
 #'          is marginally more significant than this threshold, it will be passed on to the second stage.
-#' @param multiple.hypotheses.correction Correction method, a character string. Passed to \code{\link{stats::p.adjust}}.
+#' @param multiple.hypotheses.correction Correction method, a character string. Passed to \code{\link{p.adjust}}.
 #' @param multicore logical, default FALSE; whether or not the function should use multiple cores
 #'                    in its calculations. See Details.
 #' @param updatefile path to a text file where updates may be written. Necessary for parallel
@@ -20,22 +20,20 @@
 #' @param control object of class \code{twostagecoxph.control} specifying various options for performance
 #'                  of the two stage method.
 #'
-#' @details It is shown in [1] that the two stages are independent of eachother. This results in
-#'            proper control of rate of type I errors by the multiple hypotheses correction method.
-#'            The power is also increased compared to a naive method, due to the fact that less
-#'            hypotheses are tested in the second stage resulting in a less strict correction.
-#'            The main advantage is that only a fraction of the possible interactions is tested,
-#'            resulting in an enourmous decrease in computation times.
+#' @details It is shown in  that the two stages are independent of eachother. This results in
+#'          proper control of rate of type I errors by the multiple hypotheses correction method.
+#'          The power is also increased compared to a naive method, due to the fact that less
+#'          hypotheses are tested in the second stage resulting in a less strict correction.
+#'          The main advantage is that only a fraction of the possible interactions is tested,
+#'          resulting in an enourmous decrease in computation times. \cr \cr
+#'          If \code{multicore} is \code{TRUE}, the function assumes a proper parallel back-end is registered,
+#'          e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by \code{foreach} and \code{%doPar%}. \cr \cr
+#'          If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.
+#'          This function gives the user control in which parts of the set of covariates will
+#'          be in active memory, allowing for better memory management. This does require the
+#'          user to make its own partition of the covariates into separate files.
 #'
-#'            If \code{multicore} is TRUE, the function assumes a proper parallel back-end is registered,
-#'            e.g. one obtained from doParallel::registerDoParallel(2), to be used by \code{foreach} and \code{%doPar%}.
-#'
-#'            If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.
-#'            This function gives the user control in which parts of the set of covariates will
-#'            be in active memory, allowing for better memory management. This does require the
-#'            user to make its own partition of the covariates into separate files.
-#'
-#' @return A twostageGWAS object which is a list of 7 entries:
+#' @return An object of class \code{twostageGWAS}, which is a list of 7 entries:
 #'   \item{most.significant.results}{A list describing the most significant results found. The
 #'   number of results reported is specified by the control parameter, default 5. The
 #'   list contains 3 items:
@@ -64,7 +62,7 @@
 #' @export
 #'
 #' @note Parallel processing requires a properly registered parallel back-end, such as one obtained
-#'         from "doParallel::registerDoParallel(2)" to be used by \code{foreach} and the \code{%dopar%} binary operator.
+#'         from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the \code{%dopar%} binary operator.
 #'
 #' @seealso \code{\link{foreach}}, \code{\link{print.twostageGWAS}}, \code{\link{twostagecoxph.control}}
 #'
