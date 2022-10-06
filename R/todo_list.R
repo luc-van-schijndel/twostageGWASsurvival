@@ -35,6 +35,6 @@
 #*
 #*implement ETA returning (D)
 #*
-#*Update documentation to match standard style: "data type"  "thing it determines in method"
+#*Update documentation to match standard style: "data type"  "thing it determines in method" (D)
 #*
 #*Check version requirements for Depends packages. Also check if they actually need to be there.
