@@ -1,9 +1,9 @@
-#*batch making for multicore, either by file or by subsetting
+#*batch making for multicore, either by file or by subsetting (D)
 #*
-#*check which calls to functions are made in double-for loops, and remove :: operators by importFrom-ing
+#*check which calls to functions are made in double-for loops, and remove :: operators by importFrom-ing (D)
 #*
 #*allow for the option of never having the full covariate matrix loaded in memory. Instead reading
-#*bit by bit from files.
+#*bit by bit from files. (pre-work done)
 #*
 #*Additional return info (D, I think? No more can be reasonably added?)
 #*
@@ -16,7 +16,10 @@
 #*Coxph properly calling
 #*Requires a lot of manual setting of parameters. Not worth the effort I think.
 #*
-#*Document datasets
+#*Document datasets (D)
+#*
+#*It is possible for the second stage batches to be non-ordered returned. Maybe permutate back,
+#*or require the ordered-finishing of processes?
 #*
 #*
 #*Parallel computing (D)

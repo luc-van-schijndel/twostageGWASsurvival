@@ -68,3 +68,9 @@
 
 #extract stuff and make matrix, with corresponding dimnames
 
+#
+# diff.matrix <- (sc.output.matrix - output.matrix)
+# interest <-  which(!is.na(diff.matrix) & diff.matrix != 0, arr.ind = TRUE)
+#all.na.interest <- which(xor(is.na(sc.output.matrix), is.na(output.matrix)), arr.ind = T)
+
+#https://stackoverflow.com/questions/16517795/selective-suppresswarnings-that-filters-by-regular-expression/55182432#55182432

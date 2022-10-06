@@ -25,4 +25,7 @@ Calculates the optimal batch configuration
 configures this in such a way that the number of covariates does not exceed the
 allowed maximum, while having each batch filled equally (not necessarily full). The last batch
 may be not fully filled. Made for the first stage, but easily adaptible to the second stage.
+
+Despite being useful, this function is unused for \code{batched.twostagecoxph}. This is due
+the fact that the batches in that function match up with the files provided by the user.
 }

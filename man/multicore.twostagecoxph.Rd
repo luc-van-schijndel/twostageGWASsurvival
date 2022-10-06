@@ -12,7 +12,8 @@ multicore.twostagecoxph(
   max.coef = 5,
   updatefile = "",
   max.batchsize = 1000,
-  upper.bound.correlation = 0.95
+  upper.bound.correlation = 0.95,
+  snps.are.named = FALSE
 )
 }
 \arguments{
@@ -59,10 +60,16 @@ the function itself.
 
 Since this function is not exported, I will discusse the 6 indices found in the for-loops
 (at some point we are 4 for-loops deep)
-first.batch.real.indices
-first/second.local.index
-first/second.covariate.index
+Firstly, we have the index(es) of the batch(es) that we are currently using. These are quite
+selfexplanatory.
+Secondly, the "real" indices in the batch. These correspond to the indices of the covariates
+within the entire covariate matrix. Therefore, for the very first batch, when these are just
+1:batchsize, but they will differ for further batches.
+Thirdly, the local index. These are simply the index of the covariates within the batch itself.
+These will therefore always start at 1 and not exceed max.batchsize.
+Lastly, we also have the vector of passed indices. These correspond to the covariates that
+were found to be marginally significant.
 
-passed.indices are not used, since amount rejections is better since possible NAs have been
-removed.
+Using these indices, we can get all variables we want in all cases, although we sometimes
+need to use triple subsets.
 }

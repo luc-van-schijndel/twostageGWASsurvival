@@ -16,7 +16,8 @@ twostagecoxph.control(
 \arguments{
 \item{report.lowest.amount}{integer, default 5; denotes how many of the most significant interactions
 the function should report. Altering this value does
-not affect the maximum reported by the print.twostageGWAS function}
+not affect the maximum amount reported by the \code{print.twostageGWAS} function.
+That value is always capped at 5. A lower value does affect the print function.}
 
 \item{return.raw}{logical, default FALSE; whether or not the output should contain the raw p-values or
 the multiple hypotheses corrected p-values.}
@@ -32,7 +33,7 @@ further analysis.}
 should be lowered if issues arise concerning memory. Can be raised
 to slightly increase performance}
 
-\item{upper.bound.correlation}{numeric; the upper bound on the correlation between two
+\item{upper.bound.correlation}{numeric scalar in the interval (0,1), default 0.9; the upper bound on the correlation between two
 covariates. If exceeded (in absolute value), the model
 is not fitted.}
 }

@@ -10,7 +10,8 @@ firststagecoxph.multicore(
   progress = 50,
   max.coef = 5,
   max.batchsize = 1000,
-  updatefile = ""
+  updatefile = "",
+  snps.are.named = FALSE
 )
 }
 \arguments{
@@ -27,7 +28,7 @@ firststagecoxph.multicore(
 \item{updatefile}{path to file to replace terminal}
 }
 \value{
-the p-values of the first stage (in random order) with proper names() attribute.
+the p-values of the first stage (possibly in random order) with proper names() attribute.
 As a consequence of possible empty batches, there may be trailing NA's. Ironically however,
 these are  not guaranteed to be trailing, due to the fact that batches can finish
 in any order. They are identified by their names attribute being empty: "".

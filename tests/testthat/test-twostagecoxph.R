@@ -122,6 +122,7 @@ test_that("Outputs are the p-values we expect", {
        first.stage.p.values = c(0.007898618, 0.012893229, 0.015147279))
   names(expected.second.stage$passed.indices) = 1:3
   names(expected.second.stage$first.stage.p.values) = 1:3
+  dimnames(expected.second.stage$second.stage.sparse.matrix) = list(1:3, 1:3)
   expect_equal(singlecore.twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0.05, progress = 0),
                expected.second.stage,
                tolerance = 1e-7)
@@ -131,7 +132,7 @@ test_that("Outputs are the p-values we expect", {
                                                              upper.bound.correlation = 0.95))$p.value.matrix,
                Matrix::sparseMatrix(i = c(1,1,2), j = c(2,3,3),
                                     x = c(0.29283645, 0.76400342, 0.09613708),
-                                    triangular = TRUE),
+                                    triangular = TRUE, dimnames = list(1:3, 1:3)),
                tolerance = 1e-7)
 
   #3x the previous (maximum 1)
@@ -139,7 +140,7 @@ test_that("Outputs are the p-values we expect", {
                              control = twostagecoxph.control(progress = 0, upper.bound.correlation = 0.95))$p.value.matrix,
                Matrix::sparseMatrix(i = c(1,1,2), j = c(2,3,3),
                                     x = c(0.8785094, 1, 0.2884112),
-                                    triangular = TRUE),
+                                    triangular = TRUE, dimnames = list(1:3, 1:3)),
                tolerance = 1e-7)
 
   #highest = raw, 2nd = 2x and lowest = 3x of the raw p-values
@@ -148,7 +149,7 @@ test_that("Outputs are the p-values we expect", {
                              control = twostagecoxph.control(progress = 0, upper.bound.correlation = 0.95))$p.value.matrix,
                Matrix::sparseMatrix(i = c(1,1,2), j = c(2,3,3),
                                     x = c(0.58567291, 0.76400342, 0.2884112),
-                                    triangular = TRUE),
+                                    triangular = TRUE, dimnames = list(1:3, 1:3)),
                tolerance = 1e-7)
 })
 
@@ -174,23 +175,32 @@ test_that("(Multicore) first stage gives proper output", {
   first.stage.output <- firststagecoxph.multicore(survival.dataset, covariate.matrix, progress = 0)
   expected.output <- c(0.007898618, 0.012893229, 0.015147279)
   names(expected.output) <- c("1", "2", "3")
+  #attributes are removed when subsetting, e.g. by their names.
 
-  expect_length(first.stage.output, 3)
-  expect_lt(max(first.stage.output), 1)
-  expect_gt(min(first.stage.output), 0)
-  expect_equal(first.stage.output[c("1", "2", "3")], expected.output,
+  first.stage.unlisted <- first.stage.output$p.values
+  names(first.stage.unlisted) <- first.stage.output$names
+  attr(first.stage.unlisted, "og.index") <- first.stage.output$og.index
+
+  expect_length(first.stage.unlisted, 3)
+  expect_lt(max(first.stage.unlisted), 1)
+  expect_gt(min(first.stage.unlisted), 0)
+  expect_equal(first.stage.unlisted[c("1", "2", "3")], expected.output,
                tolerance = 1e-7)
 
   #This tests the case where one batch is completely empty:
   first.stage.output <- firststagecoxph.multicore(survival.dataset, covariate.matrix,
                                                   progress = 0, max.batchsize = 1)
-  expected.output <- c(0.007898618, 0.012893229, 0.015147279, NA)
-  names(expected.output) <- c("1", "2", "3", "")
+  expected.output <- c(0.007898618, 0.012893229, 0.015147279)
+  names(expected.output) <- c("1", "2", "3")
 
-  expect_length(first.stage.output, 4)
-  expect_lt(max(first.stage.output, na.rm = TRUE), 1)
-  expect_gt(min(first.stage.output, na.rm = TRUE), 0)
-  expect_equal(first.stage.output[c("1", "2", "3")], expected.output[c("1", "2", "3")],
+  first.stage.unlisted <- first.stage.output$p.values
+  names(first.stage.unlisted) <- first.stage.output$names
+  attr(first.stage.unlisted, "og.index") <- first.stage.output$og.index
+
+  expect_length(first.stage.unlisted, 4)
+  expect_lt(max(first.stage.unlisted, na.rm = TRUE), 1)
+  expect_gt(min(first.stage.unlisted, na.rm = TRUE), 0)
+  expect_equal(first.stage.unlisted[c("1", "2", "3")], expected.output[c("1", "2", "3")],
                tolerance = 1e-7) #we excluded subsetting with "", since the name attribute then gets lost.
 
   #second stage multicore function---------------
@@ -198,7 +208,36 @@ test_that("(Multicore) first stage gives proper output", {
   second.stage.output <- multicore.twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0.05, progress = 0)
   second.stage.output.singlecore <- singlecore.twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0.05, progress = 0)
   expect_equal(second.stage.output, second.stage.output.singlecore)
+
+  multicore.output <- twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0.05, multicore = TRUE, control = twostagecoxph.control(progress = 0))
+  singlecore.output <- twostagecoxph(survival.dataset, covariate.matrix, first.stage.threshold = 0.05, multicore = FALSE, control = twostagecoxph.control(progress = 0))
+
+  expect_equal(multicore.output$marginal.significant, singlecore.output$marginal.significant)
+  expect_equal(multicore.output$first.stage, singlecore.output$first.stage)
+  expect_equal(multicore.output$fst, singlecore.output$fst)
+
+  expect_equal(multicore.output$p.value.matrix, singlecore.output$p.value.matrix)
+  expect_equal(multicore.output$most.significant.results, singlecore.output$most.significant.results)
+
 })
+
+test_that("Multicore output matches singlecore output for large dataset", {
+  skip_on_cran()
+
+  doParallel::registerDoParallel(2)
+
+  multicore.output <- twostagecoxph(example_survival_data, example_snp_data, first.stage.threshold = 0.05, multicore = TRUE, control = twostagecoxph.control(progress = 0))
+  singlecore.output <- twostagecoxph(example_survival_data, example_snp_data, first.stage.threshold = 0.05, multicore = FALSE, control = twostagecoxph.control(progress = 0))
+
+  expect_equal(multicore.output$marginal.significant, singlecore.output$marginal.significant)
+  expect_equal(multicore.output$first.stage, singlecore.output$first.stage)
+  expect_equal(multicore.output$fst, singlecore.output$fst)
+
+  expect_equal(multicore.output$p.value.matrix, singlecore.output$p.value.matrix)
+  expect_equal(multicore.output$most.significant.results, singlecore.output$most.significant.results)
+
+})
+
 
 #optimal batch configuration tests================
 

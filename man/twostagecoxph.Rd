@@ -2,7 +2,7 @@
 % Please edit documentation in R/twostagecoxph.R
 \name{twostagecoxph}
 \alias{twostagecoxph}
-\title{(WIP) Perform a two stage analysis on a survival dataset to detect epistasis}
+\title{Perform a two stage analysis on a survival dataset to detect interactions assuming proportional hazards}
 \usage{
 twostagecoxph(
   survival.dataset,
@@ -17,22 +17,22 @@ twostagecoxph(
 \arguments{
 \item{survival.dataset}{The survival dataset describing the outcome.}
 
-\item{covariate.matrix}{The nxp-matrix of covariates of the p covariates of the n patients.}
+\item{covariate.matrix}{The nxp-matrix of covariates of the p covariates of the n patients. The dimensions may be named.}
 
 \item{first.stage.threshold}{numeric scalar denoting the threshold for the first stage. If a covariate
-has a p-value lower than this threshold, it will be passed on to the second stage.}
+is marginally more significant than this threshold, it will be passed on to the second stage.}
 
-\item{multiple.hypotheses.correction}{Correction method, a character string. Passed to stats::p.adjust}
+\item{multiple.hypotheses.correction}{Correction method, a character string. Passed to \code{\link{stats::p.adjust}}.}
 
 \item{multicore}{logical, default FALSE; whether or not the function should use multiple cores
 in its calculations. See Details.}
 
 \item{updatefile}{path to a text file where updates may be written. Necessary for parallel
 computations, since the connection to the terminal will be lost. This
-file will serve as a stand in for the terminal.}
+file will in that case serve as a stand-in for the terminal.}
 
-\item{control}{Object of class twostagecoxph.control specifying various options for performance
-of the two stage method. Default is twostagecoxph.control()}
+\item{control}{object of class \code{twostagecoxph.control} specifying various options for performance
+of the two stage method.}
 }
 \value{
 A twostageGWAS object which is a list of 7 entries:
@@ -63,7 +63,29 @@ are \emph{not} corrected for the multiple tested hypotheses. }
 \item{call}{The matched call.}
 }
 \description{
-Work in progress. Only basic functionality works.
+Performs a two stage analysis to find possible interactions influencing the time to event assuming
+a Cox proportional hazards model. Most useful in cases where the covariates far outnumber the
+subjects, e.g. in a Genome Wide Association Study. The function is based on two stage, wherein
+the first one, all covariates are screened marginally for possible effects. In the second stage,
+pairs of covariates from the ones found to be marginally significant are then tested for an
+interaction effect.
+}
+\details{
+It is shown in \link{1} that the two stages are independent of eachother. This results in
+proper control of rate of type I errors by the multiple hypotheses correction method.
+The power is also increased compared to a naive method, due to the fact that less
+hypotheses are tested in the second stage resulting in a less strict correction.
+The main advantage is that only a fraction of the possible interactions is tested,
+resulting in an enourmous decrease in computation times.
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{       If \code{multicore} is TRUE, the function assumes a proper parallel back-end is registered,
+       e.g. one obtained from doParallel::registerDoParallel(2), to be used by \code{foreach} and \code\{\%doPar\%\}.
+
+       If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.
+       This function gives the user control in which parts of the set of covariates will
+       be in active memory, allowing for better memory management. This does require the
+       user to make its own partition of the covariates into separate files.
+}\if{html}{\out{</div>}}
 }
 \note{
 Parallel processing requires a properly registered parallel back-end, such as one obtained
@@ -83,15 +105,16 @@ covariate.matrix <- matrix(c(2,2,1,
                              1,0,0,
                              0,0,0),
                            nrow = 10, ncol = 3, byrow = TRUE)
-twostagecoxph(survival.dataset, covariate.matrix, control = twostagecoxph.control(progress = 0))
+twostagecoxph(survival.dataset, covariate.matrix,
+              control = twostagecoxph.control(progress = 0))
 
 str(example_survival_data)
 str(example_snp_data)
 
 print(foo <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
-                            first.stage.threshold = 1e-5))
+                           first.stage.threshold = 1e-5))
 print(bar <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
-                            first.stage.threshold = 1e-4))
+                           first.stage.threshold = 1e-4))
 #[,1:300] subsetting is added to speed up the example. Try removing it! :)
 
 # As we can see, foo and bar have different results. A lower FST generally gives more power, but it
