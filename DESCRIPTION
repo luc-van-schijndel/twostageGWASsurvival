@@ -1,6 +1,6 @@
 Package: twostageGWASsurvival
 Title: Implements a Two Stage Method for Detecting Epistasis in GWAS for Survival Data
-Version: 0.2.1.01
+Version: 0.2.1.02
 Authors@R: 
     person("Luc", "van Schijndel", , "lcvsch@hotmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-1549-7705"))
@@ -18,6 +18,8 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.1
 Suggests: 
     doParallel,
+    knitr,
+    rmarkdown,
     testthat (>= 3.0)
 Imports: 
     stats,
@@ -30,3 +32,4 @@ BugReports: https://github.com/luckylluck2/twostageGWASsurvival/issues
 Depends: 
     R (>= 2.10)
 LazyData: true
+VignetteBuilder: knitr
