@@ -51,7 +51,10 @@
 #'   \item{p.value.matrix}{A \code{sparseMatrix} from the package "Matrix", specifying the resulting
 #'   upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
 #'     is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
-#'     tested with the method specified by the \code{multiple.hypotheses.correction} parameter.}
+#'     tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
+#'     of the dimensions of the matrix match the ones specified in the files, if the read.function assigns
+#'     dimnames to the matrix. The row and columns corresponding to covariates that were not named in the input
+#'     matrix, have names '"NA"' (Note: not 'NA').}
 #'   \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
 #'   were found to be marginally significant in the first stage. }
 #'   \item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
@@ -447,7 +450,7 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
     }
   }
 
-  names.vector <- rep(NA, dim(covariate.matrix)[2])
+  names.vector <- rep("NA", dim(covariate.matrix)[2])
   if(snps.are.named){
     names.vector[passed.indices] = dimnames(covariate.matrix)[[2]][passed.indices]
   } else {
@@ -707,7 +710,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
     return(return.matrix)
                                     }
 
-  names.vector <- rep(NA, dim(covariate.matrix)[2])
+  names.vector <- rep("NA", dim(covariate.matrix)[2])
   if(snps.are.named){
     names.vector[passed.indices] = dimnames(covariate.matrix)[[2]][passed.indices]
   } else {

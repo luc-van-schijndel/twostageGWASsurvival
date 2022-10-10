@@ -62,7 +62,7 @@
 #'     tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
 #'     of the dimensions of the matrix match the ones specified in the files, if the read.function assigns
 #'     dimnames to the matrix. The row and columns corresponding to covariates that were not passed to
-#'     the second stage, have names "NA". The entries in these rows and columns are also all absent.}
+#'     the second stage, have names '"NA"' (Note: not 'NA'). The entries in these rows and columns are also all absent.}
 #'   \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
 #'   were found to be marginally significant in the first stage. }
 #'   \item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
@@ -585,7 +585,7 @@ batched.secondstagecoxph <- function(survival.dataset, covariate.filepaths, firs
   global.index <- list.location.covariates$index + (list.location.covariates$file-1)*max.batchsize
   global.non.na.indices <- cbind(global.index[non.na.indices[,1]], global.index[non.na.indices[,2]])
 
-  sparse.dimnames <- list(rep(NA, number.of.covariates), rep(NA, number.of.covariates))
+  sparse.dimnames <- list(rep("NA", number.of.covariates), rep("NA", number.of.covariates))
   sparse.dimnames[[1]][global.index] = sparse.dimnames[[2]][global.index] = list.location.covariates$names
 
   second.stage.sparse.matrix <- Matrix::sparseMatrix(i = global.non.na.indices[,1], j = global.non.na.indices[,2],
