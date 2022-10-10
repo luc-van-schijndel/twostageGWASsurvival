@@ -279,7 +279,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   clear.current.line()
   if(progress != 0) cat("\rAnalysis completed. Runtime:", total.runtime)
 
-  return.object <- list(results.list = results.list,
+  return.object <- list(result.list = result.list,
                         most.significant.results = lowest.five.list,
                         p.value.matrix = ts.output$second.stage.sparse.matrix,
                         marginal.significant = ts.output$passed.indices,
