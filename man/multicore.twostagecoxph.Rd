@@ -32,6 +32,8 @@ multicore.twostagecoxph(
 \item{max.batchsize}{max number of covariates in one batch}
 
 \item{upper.bound.correlation}{upper bound on the correlation before not checked}
+
+\item{snps.are.named}{whether or not the covariates have names}
 }
 \value{
 list of p-value matrix, first stage p-values and which ones passed.

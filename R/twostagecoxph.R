@@ -34,6 +34,17 @@
 #'          user to make its own partition of the covariates into separate files.
 #'
 #' @return An object of class \code{twostageGWAS}, which is a list of 7 entries:
+#'   \item{result.list}{A list containing the results in either 3 or 5 entries, depending on
+#'   whether or not the covariates are named in the files:
+#'   \describe{
+#'     \item{\code{p.values}}{the non-trivial p-values of the interactions. The list is sorted in ascending
+#'     order by this value. Any p-values that are either NA, 0, or 1 after possibly applying the
+#'     multiple hypotheses correction will not be present in this vector.}
+#'     \item{\code{index.one}, \code{index.two}}{the indices describing the two covariates that
+#'     describe the interaction corresponding to the p-values in the previous entry. }
+#'     \item{\code{names.one}, \code{names.two}}{if the covariates are named, these are the names
+#'     of the covariates found on the aforementioned indices.}
+#'   }}
 #'   \item{most.significant.results}{A list describing the most significant results found. The
 #'   number of results reported is specified by the control parameter, default 5. The
 #'   list contains 3 items:
@@ -244,13 +255,32 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
                              p.value.epistasis = as.numeric(sort(unique(lowest.five.dupl))),
                              duplicate.interactions = duplicate.list)
   } else lowest.five.list = list()
+
+  # We fill a list with the non-trivial results, along with corresponding index and (if availible) names
+  result.indices <- Matrix::which(ts.output$second.stage.sparse.matrix > 0 &
+                                    ts.output$second.stage.sparse.matrix < 1 &
+                                    !is.na(ts.output$second.stage.sparse.matrix), arr.ind = TRUE)
+  dimnames(result.indices) <- NULL
+  result.p.values <- ts.output$second.stage.sparse.matrix[result.indices]
+  sorting.permutation <- order(result.p.values)
+
+  result.list <- list(p.values = result.p.values[sorting.permutation],
+                      index.one = result.indices[sorting.permutation,1],
+                      index.two = result.indices[sorting.permutation,2]
+                      )
+  if(snps.are.named) result.list <- append(result.list, list(
+                                           names.one = dimnames(ts.output$second.stage.sparse.matrix)[[1]][result.indices[,1][sorting.permutation]],
+                                           names.two = dimnames(ts.output$second.stage.sparse.matrix)[[1]][result.indices[,2][sorting.permutation]]))
+
+
   total.runtime <- proc.time()[3] - start.time
   names(total.runtime) = c("seconds")
 
   clear.current.line()
   if(progress != 0) cat("\rAnalysis completed. Runtime:", total.runtime)
 
-  return.object <- list(most.significant.results = lowest.five.list,
+  return.object <- list(results.list = results.list,
+                        most.significant.results = lowest.five.list,
                         p.value.matrix = ts.output$second.stage.sparse.matrix,
                         marginal.significant = ts.output$passed.indices,
                         first.stage = ts.output$first.stage.p.values,
@@ -480,6 +510,7 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
 #' @param updatefile path to that file
 #' @param max.batchsize max number of covariates in one batch
 #' @param upper.bound.correlation upper bound on the correlation before not checked
+#' @param snps.are.named whether or not the covariates have names
 #'
 #' @return list of p-value matrix, first stage p-values and which ones passed.
 #'
@@ -790,6 +821,7 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
 #' @param max.coef what the maximum coefficients may be when fitting
 #' @param max.batchsize what the maximum batchsize must be.
 #' @param updatefile path to file to replace terminal
+#' @param snps.are.named wheter or not the covariates have names
 #'
 #' @return the p-values of the first stage (possibly in random order) with proper names() attribute.
 #'          As a consequence of possible empty batches, there may be trailing NA's. Ironically however,

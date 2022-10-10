@@ -23,7 +23,7 @@ batched.twostagecoxph(
 \item{first.stage.threshold}{numeric scalar denoting the threshold for the first stage. If a covariate
 has a p-value lower than this threshold, it will be passed on to the second stage.}
 
-\item{multiple.hypotheses.correction}{Correction method, a character string. Passed to \code{\link{stats::p.adjust}}}
+\item{multiple.hypotheses.correction}{Correction method, a character string. Passed to \code{\link{p.adjust}}}
 
 \item{updatefile}{path to a text file where updates may be written. Necessary for parallel
 computations, since the connection to the terminal will be lost. This
@@ -43,7 +43,23 @@ the first argument of the function will be used to pass the filepaths. See Detai
 }
 \value{
 A twostageGWAS object, which is a list of 7 entries:
-\item{most.significant.results}{A list describing the most significant results found. The
+\item{result.list}{A list containing the results in either 5 or 7 entries, depending on
+whether or not the covariates are named in the files:
+\describe{
+\item{\code{p.values}}{the non-trivial p-values of the interactions. The list is sorted in ascending
+order by this value. Any p-values that are either NA, 0, or 1 after possibly applying the
+multiple hypotheses correction will not be present in this vector.}
+\item{\code{batch.one}, \code{index.one}, \code{batch.two}, \code{index.two}}{
+the indices describing where to find the two covariates that
+describe the interaction corresponding to the p-values in the previous entry. \code{batch.one}
+and \code{batch.two} give the indices of the files as described in \code{covariate.filepaths}
+containing the two covariates. \code{index.one} and \code{index.two} give the indices of
+the covariates \emph{within} those files, i.e. the local indices.}
+\item{\code{names.one}, \code{names.two}}{if the covariates are named, these are the names
+of the covariates found on the aforementioned indices.}
+}}
+\item{most.significant.results}{A list describing the most significant results found used
+primarily by the print method. The
 number of results reported is specified by the control parameter, default 5. The
 list contains 3 items:
 \describe{
@@ -63,7 +79,7 @@ is specified in the control parameter, these p-values will be corrected for the 
 tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
 of the dimensions of the matrix match the ones specified in the files, if the read.function assigns
 dimnames to the matrix. The row and columns corresponding to covariates that were not passed to
-the second stage, have names "NA". The entries in these rows and columns are also all absent.}
+the second stage, have names '"NA"' (Note: not 'NA'). The entries in these rows and columns are also all absent.}
 \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
 were found to be marginally significant in the first stage. }
 \item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
