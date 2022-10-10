@@ -39,4 +39,9 @@ test_that("batched variant gives same output as normal variant", {
 
   expect_equal(output.batched$most.significant.results, output.direct$most.significant.results)
 
+
+  expect_equal(output.batched$result.list$p.values, output.direct$result.list$p.values)
+  expect_equal(output.batched$result.list$names.one, output.direct$result.list$names.one)
+  expect_equal(output.batched$result.list$names.two, output.direct$result.list$names.two)
+
 })
