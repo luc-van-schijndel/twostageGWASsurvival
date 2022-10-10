@@ -585,7 +585,7 @@ batched.secondstagecoxph <- function(survival.dataset, covariate.filepaths, firs
   global.index <- list.location.covariates$index + (list.location.covariates$file-1)*max.batchsize
   global.non.na.indices <- cbind(global.index[non.na.indices[,1]], global.index[non.na.indices[,2]])
 
-  sparse.dimnames <- list(rep(NA, number.of.covariates), rep(NA, number.of.covariates))
+  sparse.dimnames <- list(rep("NA", number.of.covariates), rep("NA", number.of.covariates))
   sparse.dimnames[[1]][global.index] = sparse.dimnames[[2]][global.index] = list.location.covariates$names
 
   second.stage.sparse.matrix <- Matrix::sparseMatrix(i = global.non.na.indices[,1], j = global.non.na.indices[,2],
