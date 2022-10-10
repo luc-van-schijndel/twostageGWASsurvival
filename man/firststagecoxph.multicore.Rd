@@ -26,6 +26,8 @@ firststagecoxph.multicore(
 \item{max.batchsize}{what the maximum batchsize must be.}
 
 \item{updatefile}{path to file to replace terminal}
+
+\item{snps.are.named}{wheter or not the covariates have names}
 }
 \value{
 the p-values of the first stage (possibly in random order) with proper names() attribute.

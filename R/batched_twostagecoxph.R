@@ -8,7 +8,7 @@
 #' @param covariate.filepaths The vector of paths of the files containing the covariates. See Details.
 #' @param first.stage.threshold numeric scalar denoting the threshold for the first stage. If a covariate
 #'          has a p-value lower than this threshold, it will be passed on to the second stage.
-#' @param multiple.hypotheses.correction Correction method, a character string. Passed to \code{\link{stats::p.adjust}}
+#' @param multiple.hypotheses.correction Correction method, a character string. Passed to \code{\link{p.adjust}}
 #' @param updatefile path to a text file where updates may be written. Necessary for parallel
 #'                     computations, since the connection to the terminal will be lost. This
 #'                     file will in that case serve as a stand-in for the terminal.
@@ -42,7 +42,23 @@
 #'            \emph{must} be the number of covariates in the last file.
 #'
 #' @return A twostageGWAS object, which is a list of 7 entries:
-#'   \item{most.significant.results}{A list describing the most significant results found. The
+#'   \item{result.list}{A list containing the results and where to find them in either 5 or 7 entries, depending on
+#'   whether or not the covariates are named in the files:
+#'   \describe{
+#'     \item{\code{p.values}}{the non-trivial p-values of the interactions. The list is sorted in ascending
+#'     order by this value. Any p-values that are either NA, 0, or 1 after possibly applying the
+#'     multiple hypotheses correction will not be present in this vector.}
+#'     \item{\code{batch.one}, \code{index.one}, \code{batch.two}, \code{index.two}}{
+#'     the indices describing where to find the two covariates that
+#'     describe the interaction corresponding to the p-values in the previous entry. \code{batch.one}
+#'     and \code{batch.two} give the indices of the files as described in \code{covariate.filepaths}
+#'     containing the two covariates. \code{index.one} and \code{index.two} give the indices of
+#'     the covariates \emph{within} those files, i.e. the local indices.}
+#'     \item{\code{names.one}, \code{names.two}}{if the covariates are named, these are the names
+#'     of the covariates found on the aforementioned indices.}
+#'   }}
+#'   \item{most.significant.results}{A list describing the most significant results found used
+#'   primarily by the print method. The
 #'   number of results reported is specified by the control parameter, default 5. The
 #'   list contains 3 items:
 #'   \describe{
@@ -255,13 +271,34 @@ batched.twostagecoxph <- function(survival.dataset, covariate.filepaths, first.s
                              p.value.epistasis = as.numeric(sort(unique(lowest.five.dupl))),
                              duplicate.interactions = duplicate.list)
   } else lowest.five.list = list()
+
+  # We fill a list with the non-trivial results, along with corresponding index and (if availible) names
+  result.indices <- Matrix::which(ts.output$second.stage.sparse.matrix > 0 &
+                                    ts.output$second.stage.sparse.matrix < 1 &
+                                    !is.na(ts.output$second.stage.sparse.matrix), arr.ind = TRUE)
+  dimnames(result.indices) <- NULL
+  result.p.values <- ts.output$second.stage.sparse.matrix[result.indices]
+  sorting.permutation <- order(result.p.values)
+
+  result.list <- list(p.values = result.p.values[sorting.permutation],
+                      batch.one = result.indices[sorting.permutation,1] %/% max.batchsize + 1,
+                      index.one = result.indices[sorting.permutation,1] %% max.batchsize,
+                      batch.two = result.indices[sorting.permutation,2] %/% max.batchsize + 1,
+                      index.two = result.indices[sorting.permutation,2] %% max.batchsize
+  )
+  if(snps.are.named) result.list <- append(result.list, list(
+    names.one = dimnames(ts.output$second.stage.sparse.matrix)[[1]][result.indices[,1][sorting.permutation]],
+    names.two = dimnames(ts.output$second.stage.sparse.matrix)[[1]][result.indices[,2][sorting.permutation]]))
+
+
   total.runtime <- proc.time()[3] - start.time
   names(total.runtime) = c("seconds")
 
   clear.current.line()
   if(progress != 0) cat("\rAnalysis completed. Runtime:", total.runtime)
 
-  return.object <- list(most.significant.results = lowest.five.list,
+  return.object <- list(results.list = results.list,
+                        most.significant.results = lowest.five.list,
                         p.value.matrix = ts.output$second.stage.sparse.matrix,
                         marginal.significant = ts.output$passed.indices,
                         first.stage = ts.output$first.stage.p.values,
