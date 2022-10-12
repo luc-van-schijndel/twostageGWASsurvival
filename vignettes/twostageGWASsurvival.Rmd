@@ -7,7 +7,6 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-% !Rnw weave = knitr
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
