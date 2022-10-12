@@ -115,8 +115,8 @@ Parallel processing requires a properly registered parallel back-end, such as on
 from "doParallel::registerDoParallel(2)" to be used by \code{foreach} and the \code{\%dopar\%} binary operator. \cr \cr
 Be aware that any progress updates are only rough estimates of the current progress and remaining runtime.
 Since the parallel processes are not inter-connected, the estimates are based on the
-progress itself and therefore very unreliable if the fraction of processes to workers is
-low.
+progress itself and therefore highly unreliable if the fraction of processes to workers is
+relatively low.
 }
 \examples{
 str(example_survival_data)

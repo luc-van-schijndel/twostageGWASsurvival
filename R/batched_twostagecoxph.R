@@ -484,7 +484,8 @@ batched.secondstagecoxph <- function(survival.dataset, covariate.filepaths, firs
                                     .packages = c("survival", "utils"),
                                     .export = c("prefitting.check.two", "convergence.check",
                                                 "clear.current.line"),
-                                    .combine = rbind) %dopar% {
+                                    .combine = rbind,
+                                    .inorder = FALSE) %dopar% {
     #I'm NOT gonna reindent these lines to match up with the foreach-loop :P
     first.files.process <- process.file.indices[[first.process.index]]
 
@@ -622,10 +623,13 @@ batched.secondstagecoxph <- function(survival.dataset, covariate.filepaths, firs
       }
     }
 
-
+    dimnames(return.matrix) <- list(rep(first.process.index, dim(return.matrix)[1]), NULL)
     return(return.matrix)
                                     }
 
+  #the names of the rows are the index of the process, we use this to reorder the matrix
+  back.permutation <- order(as.numeric(dimnames(output.matrix)[[1]]))
+  output.matrix <- output.matrix[back.permutation,]
 
   #output.matrix is a dense matrix, which we need to expand to a sparse matrix with proper indexing and naming
   non.na.indices <- which(!is.na(output.matrix), arr.ind = TRUE)

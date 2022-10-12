@@ -634,7 +634,8 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
                                     .packages = c("survival", "utils"),
                                     .export = c("prefitting.check.two", "convergence.check",
                                                 "clear.current.line"),
-                                    .combine = rbind) %dopar% {
+                                    .combine = rbind,
+                                    .inorder = FALSE) %dopar% {
     #I'm NOT gonna reindent these lines to match up with the foreach-loop...
     first.batch.real.indices <- batch.indices.matrix[,first.batch.index]
     first.batch.real.indices <- first.batch.real.indices[!is.na(first.batch.real.indices)]
@@ -754,6 +755,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
         }
       }
     }
+    dimnames(return.matrix) <- list(rep(first.batch.index, dim(return.matrix)[1]), NULL)
     return(return.matrix)
                                     }
 
@@ -763,6 +765,9 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
   } else {
     names.vector[passed.indices] = passed.indices
   }
+
+  back.permutation <- order(as.numeric(dimnames(output.matrix)[[1]]))
+  output.matrix <- output.matrix[back.permutation,]
 
   #output.matrix is a dense matrix, which we need to expand to a sparse matrix with proper indexing
   non.na.indices <- which(!is.na(output.matrix), arr.ind = TRUE)
@@ -883,7 +888,8 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
                                      .packages = c("survival", "utils"),
                                      .export = c("prefitting.check.one", "convergence.check",
                                                  "clear.current.line"),
-                                     .combine = function(x,y) mapply(c, x, y, SIMPLIFY = FALSE)) %dopar% {
+                                     .combine = function(x,y) mapply(c, x, y, SIMPLIFY = FALSE),
+                                     .inorder = FALSE) %dopar% {
     this.process.indices = (matrix.indices.processes[,process.index])[!is.na(matrix.indices.processes[,process.index])]
     if(length(this.process.indices) == 0) return(list(p.values = rep(NA, optimal.batchsize),
                                                       names = rep(NA, optimal.batchsize),

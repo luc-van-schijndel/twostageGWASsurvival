@@ -102,10 +102,10 @@ user to make its own partition of the covariates into separate files.
 \note{
 Parallel processing requires a properly registered parallel back-end, such as one obtained
 from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the \code{\%dopar\%} binary operator. \cr \cr
-Be aware that any progress updates are only rough estimates of the current progress and remaining runtime.
+Be aware that in the case of parallel computations, any progress updates are only rough estimates of the current progress and remaining runtime.
 Since the parallel processes are not inter-connected, the estimates are based on the
-progress itself and therefore very unreliable if the fraction of processes to workers is
-low.
+progress itself and therefore highly unreliable if the fraction of processes to workers is
+relatively low.
 }
 \examples{
 survival.dataset <- survival::Surv(c(5,5,3,3,2,2,2,1,1,1),
