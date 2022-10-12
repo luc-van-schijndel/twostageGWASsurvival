@@ -7,6 +7,8 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+% !Rnw weave = knitr
+
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
@@ -17,11 +19,14 @@ knitr::opts_chunk$set(
 The package implements a two stage method for finding significant interaction effects within a high-dimensional setting where the covariates outnumber the subjects assuming a Cox proportional hazards model.
 
 Since the package is not yet available on CRAN, installation goes as follows:
+  
 
 ```{r setup}
-invisible(devtools::install_github("luckylluck2/twostageGWASsurvival"))
+invisible(install_github("luckylluck2/twostageGWASsurvival"))
 library(twostageGWASsurvival)
 ```
+
+
 
 The two stage method is, as the name implies, based on two stages. The first stage tests all covariates individually for a significant marginal effect. The covariates that are found to be marginally significant are passed on to the next stage. The second stage then tests all pairs of marginal significant for a significant interaction effect. Since we are testing multiple hypotheses, we have to correct for this fact, which is of course done by applying a multiple hypotheses correction such as the Bonferroni correction for example. The crucial part is that the two stages, more specifically the p-values found in the two stages, are independent of each other. The proof of this is quite long, but it follows from a thorough analysis of the Fisher information matrix. By this independence, we only need to apply the multiple hypotheses correction to the hypotheses tested in the second stage.
 
@@ -38,8 +43,8 @@ By lowering the first stage threshold, less pairs of covariates will be tested i
 # Example uses
 
 A small example is given by the following datasets:
-
-```{r brief example dataset}
+  
+```{r small example}
 survival.dataset <- survival::Surv(c(5,5,3,3,2,2,2,1,1,1),
                                    c(0,0,1,1,1,1,1,1,1,1))
 covariate.matrix <- matrix(c(2,2,1,
@@ -56,7 +61,7 @@ covariate.matrix <- matrix(c(2,2,1,
 ```
 
 We can see that all covariates have a positive influence on the time to event, since we find the highest values of the covariates for the highest survival times. The main function of this package, \code{twostagecoxph} can be used to analyse this tiny dataset assuming a Cox proportional hazards model:
-
+  
 ```{r analysing brief example dataset}
 result <- twostagecoxph(survival.dataset, covariate.matrix,
                         control = twostagecoxph.control(progress = 0))
@@ -66,14 +71,14 @@ print(result)
 As we can see, the object obtained from the function has a print method associated with it, and this method provides a quick summary of the results. The object itself contains all aspects of the result, such as the vector of p-values found in the first stage, and the resulting p-values from the second stage arranged in a sparse matrix.
 
 The function also has parallel processing capabilities, but these require a parallel back-end to be registered beforehand. Since the previous example is too small to profit from the multicore capabilities, let us introduce a toy GWAS:
-
+  
 ```{r larger toy GWAS dataset}
 str(example_survival_data)
 str(example_snp_data)
 ```
 
 As we can see, in this synthetic GWAS, we had 200 subjects of which we documented 500 SNPs. These SNPs have a strong correlation structure, as we often see in covariates derived from the genome. One pair has a build in influence on the hazard rate according to a Cox proportional hazards model. Lets register a parallel back-end and use the package to analyse this dataset:
-
+  
 ```{r analysing toy GWAS in parallel}
 doParallel::registerDoParallel(2)
 result <- twostagecoxph(example_survival_data, example_snp_data, multicore = TRUE,
@@ -82,7 +87,7 @@ print(result)
 ```
 
 As we can see, we have some significant results. Three pairs of covariates have a corresponding p-value that is lower than 0.05, so at this level of significance we find a significant interaction. Moreover, some other pairs have the same (significant) p-values as other pairs. All of these are listed in the \code{result} object:
-
+  
 ```{r some results may be similar}
 result$most.significant.results$duplicate.interactions
 ```
@@ -92,7 +97,7 @@ This means that the interaction of these pairs are so similar to the interaction
 # Memory
 
 This function is written with the intention that it would be used in a Genome Wide Association Study. In such a study, the amount of covariates can rise to the millions, which gives rise to problems concerning memory. To address this, a function has been implemented to read to covariates in batches from multiple files. This way, the user has control over how much memory is required for the operation of the function. The user has to provide the files themselves, and a way for the function to read them. The large variety of data structures does not allow for an easy way for the function the adapt the files to something useable, so the user is therefore required to do some work beforehand. The files should be structured in such a way, that the user-provided function results in a matrix where each column corresponds to a covariate. Additional requirements are described in the documentation. Lets make some files from the previous example to show the operations:
-
+  
 ```{r splitting toy GWAS into multiple files}
 number.of.covs <- dim(example_snp_data)[2]
 #Split the covariate matrix into various files.
@@ -104,7 +109,7 @@ temp.snpfile.paths <- tempfile(rep("snpfile", number.of.files),
                                fileext = ".txt")
 indices.matrix <- matrix(c(seq_len(number.of.covs),
                            rep(NA, ceiling(number.of.covs/number.of.files)*
-                                   number.of.files - number.of.covs)),
+                                 number.of.files - number.of.covs)),
                          ncol = number.of.files)
 for(file.num in 1:number.of.files){
   indices <- indices.matrix[,file.num]
@@ -118,7 +123,7 @@ for(file.num in 1:number.of.files){
 As we can see, it is possible for the last file to have less covariates than the other files. This is however the only flexibility implemented; the function assumes all other files are structured similarly, e.g. same dimensions, same presence of headers, etc.
 
 The result from the function using batches is then the same as the one using the basic function:
-
+  
 ```{r analyse multiple files}
 print(batched.result <- 
         batched.twostagecoxph(example_survival_data, temp.snpfile.paths,

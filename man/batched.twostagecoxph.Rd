@@ -43,7 +43,7 @@ the first argument of the function will be used to pass the filepaths. See Detai
 }
 \value{
 A twostageGWAS object, which is a list of 7 entries:
-\item{result.list}{A list containing the results in either 5 or 7 entries, depending on
+\item{result.list}{A list containing the results and where to find them in either 5 or 7 entries, depending on
 whether or not the covariates are named in the files:
 \describe{
 \item{\code{p.values}}{the non-trivial p-values of the interactions. The list is sorted in ascending
@@ -124,7 +124,8 @@ str(example_snp_data)
 
 #Split the covariate matrix into various files.
 number.of.covs <- dim(example_snp_data)[2]
-number.of.files <- 6 #500 is not a multiple of 500, so the last file has less covariates than the other ones
+number.of.files <- 6
+#500 is not a multiple of 500, so the last file has less covariates than the other ones
 temp.snpfile.paths <- tempfile(rep("snpfile", number.of.files),
                                tmpdir = tempdir(check = TRUE),
                                fileext = ".txt")
