@@ -14,9 +14,10 @@
 #' @param multiple.hypotheses.correction Correction method, a character string. Passed to \code{\link{p.adjust}}.
 #' @param multicore logical, default FALSE; whether or not the function should use multiple cores
 #'                    in its calculations. See Details.
-#' @param updatefile path to a text file where updates may be written. Necessary for parallel
+#' @param updatefile A \link{connection} to a text file where updates may be written. Necessary for parallel
 #'                     computations, since the connection to the terminal will be lost. This
-#'                     file will in that case serve as a stand-in for the terminal.
+#'                     file will in that case serve as a stand-in for the terminal. Default ""
+#'                     equals a connection to the terminal.
 #' @param control object of class \code{twostagecoxph.control} specifying various options for performance
 #'                  of the two stage method.
 #'
@@ -59,11 +60,11 @@
 #'     the interactions specified in this list. An interaction is said to be duplicate if the corresponding
 #'     p-value is the same up until 7 significant figures. }
 #'   }}
-#'   \item{p.value.matrix}{A \code{sparseMatrix} from the package "Matrix", specifying the resulting
+#'   \item{p.value.matrix}{A \code{sparseMatrix} object from the package \code{Matrix}, specifying the resulting
 #'   upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
 #'     is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
 #'     tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
-#'     of the dimensions of the matrix match the ones specified in the files, if the read.function assigns
+#'     of the dimensions of the matrix match the ones specified in the files, if the \code{read.function} assigns
 #'     dimnames to the matrix. The row and columns corresponding to covariates that were not named in the input
 #'     matrix, have names '"NA"' (Note: not 'NA').}
 #'   \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
@@ -76,7 +77,11 @@
 #' @export
 #'
 #' @note Parallel processing requires a properly registered parallel back-end, such as one obtained
-#'         from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the \code{%dopar%} binary operator.
+#'         from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the \code{%dopar%} binary operator. \cr \cr
+#'         Be aware that in the case of parallel computations, any progress updates are only rough estimates of the current progress and remaining runtime.
+#'         Since the parallel processes are not inter-connected, the estimates are based on the
+#'         progress itself and therefore highly unreliable if the fraction of processes to workers is
+#'         relatively low.
 #'
 #' @seealso \code{\link{foreach}}, \code{\link{print.twostageGWAS}}, \code{\link{twostagecoxph.control}}
 #'
@@ -171,7 +176,8 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
         progress = progress,
         max.coef = max.coef,
         upper.bound.correlation = upper.bound.correlation,
-        snps.are.named = snps.are.named
+        snps.are.named = snps.are.named,
+        updatefile = updatefile
       )
   }
 
@@ -277,7 +283,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   names(total.runtime) = c("seconds")
 
   clear.current.line()
-  if(progress != 0) cat("\rAnalysis completed. Runtime:", total.runtime)
+  if(progress != 0) cat("\rAnalysis completed. Runtime:", total.runtime, file = updatefile)
 
   return.object <- list(result.list = result.list,
                         most.significant.results = lowest.five.list,
@@ -406,8 +412,17 @@ optimal.batch.configuration <- function(no.covariates, max.batchsize, no.workers
 }
 
 singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
-                                     progress = 50, max.coef = 5, upper.bound.correlation = 0.95, snps.are.named = FALSE){
-  first.stage.result <- firststagecoxph(survival.dataset, covariate.matrix, progress, max.coef, snps.are.named = snps.are.named)
+                                     progress = 50, max.coef = 5, upper.bound.correlation = 0.95, snps.are.named = FALSE,
+                                     updatefile = ""){
+  first.stage.result <-
+    firststagecoxph(
+      survival.dataset,
+      covariate.matrix,
+      progress,
+      max.coef,
+      snps.are.named = snps.are.named,
+      updatefile = updatefile
+    )
   if(snps.are.named) {
     names(first.stage.result) = dimnames(covariate.matrix)[[2]]
   } else {
@@ -474,7 +489,7 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
         clear.current.line()
         cat("\rSecond stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
             "Estimated time until completion: ",
-            text.estimated.time, sep = "")
+            text.estimated.time, sep = "", file = updatefile)
         utils::flush.console()
       }
     }
@@ -665,7 +680,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
 
         if(max((amount.rejections*(first.local.index-1) + second.local.index - first.local.index*(first.local.index+1)/2) %% progress == 0, FALSE, na.rm = TRUE)){
           progress.frac <- (amount.rejections*(first.local.index-1) + second.local.index - first.local.index*(first.local.index+1)/2)/(amount.rejections*(amount.rejections-1)/2)
-
+          progress.frac <- (first.batch.index + progress.frac)/(dim(batch.indices.matrix)[2] + 1)
           estimated.seconds <- (1-progress.frac)/progress.frac*(proc.time()[3] - start.time.second.stage)
           text.estimated.time <- ""
           if(estimated.seconds >=3600) text.estimated.time = paste0(round(estimated.seconds/3600, digits = 1), " hours.")
@@ -674,7 +689,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
           clear.current.line()
           cat("\rSecond stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
               "Estimated time until completion: ",
-              text.estimated.time, sep = "")
+              text.estimated.time, sep = "", file = updatefile)
           utils::flush.console()
         }
       }
@@ -721,6 +736,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
 
             if(max((amount.rejections*(first.local.index-1) + second.local.index - first.local.index*(first.local.index+1)/2) %% progress == 0, FALSE, na.rm = TRUE)){
               progress.frac <- (amount.rejections*(first.local.index-1) + second.local.index - first.local.index*(first.local.index+1)/2)/(amount.rejections*(amount.rejections-1)/2)
+              progress.frac <- (first.batch.index + progress.frac)/(dim(batch.indices.matrix)[2] + 1)
 
               estimated.seconds <- (1-progress.frac)/progress.frac*(proc.time()[3] - start.time.second.stage)
               text.estimated.time <- ""
@@ -730,7 +746,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
               clear.current.line()
               cat("\rSecond stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
                   "Estimated time until completion: ",
-                  text.estimated.time, sep = "")
+                  text.estimated.time, sep = "", file = updatefile)
               utils::flush.console()
             }
           }
@@ -760,7 +776,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
 }
 
 
-firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, max.coef = 5, snps.are.named = FALSE){
+firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, max.coef = 5, snps.are.named = FALSE, updatefile = updatefile){
   start.time.first.stage <- proc.time()[3]
   p.value.vector <- rep(NA, length = dim(covariate.matrix)[2])
   for(covariate.index in 1:length(p.value.vector)){
@@ -795,14 +811,14 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
       cat("\r", "First stage is at ", round(progress.frac*100, digits = 0), "% progress. ",
           "Estimated time until completion first stage: ",
           round((1-progress.frac)/progress.frac*(proc.time()[3] - start.time.first.stage)/60, digits = 1),
-          " minutes. ", sep = "")
+          " minutes. ", sep = "", file = updatefile)
       utils::flush.console()
     }
   }
 
   if(progress != 0){
     clear.current.line()
-    cat("\rFirst stage complete. Commencing second stage. ")
+    cat("\rFirst stage complete. Commencing second stage. ", file = updatefile)
   }
 
   if(snps.are.named) {
@@ -901,6 +917,7 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
 
       if(max(this.process.indices[covariate.index] %% progress == 0, FALSE, na.rm = TRUE)){
         progress.frac <- this.process.indices[covariate.index]/no.covariates
+        progress.frac <- (process.index + progress.frac)/(no.processes + 1)
         clear.current.line()
         cat("\r", "First stage is at ", round(progress.frac*100, digits = 0), "% progress. ",
             "Estimated time until completion first stage: ",
@@ -924,25 +941,32 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
 
   if(progress != 0){
     clear.current.line()
-    cat("\rFirst stage complete. Commencing second stage. ")
+    cat("\rFirst stage complete. Commencing second stage. ", file = updatefile)
   }
   return(p.value.list)
 }
 
 
-clear.current.line <- function(){
-  cat("\r", rep(" ", (getOption("width")+4)/2))
+clear.current.line <- function(updatefile = ""){
+  cat("\r", rep(" ", (getOption("width")+4)/2), file = updatefile)
   utils::flush.console()
 }
 
 #' Print method for twostageGWAS objects
 #'
 #' @usage \method{print}{twostageGWAS}(x, \ldots)
-#' @param x object of class twostageGWAS
-#' @param ... optional arguments passed on to cat and print.default functions.
+#' @param x object of class \code{twostageGWAS}
+#' @param ... optional arguments passed on to \code{cat} and \code{print.default} functions.
 #'
+#' @details prints a brief overview of the most relevant results (max 5) concluded from the two stage analysis.
+#'            Includes the original call, the number of covariates deemed significant by the
+#'            first stage and how many tests will be performed in the second stage.
+#'            The last table shows the best results, ordered from lowest p-value to highest.
+#'            The name of the interaction is given in the form 'name_cov_1 x name_cov_2' along
+#'            with the corresponding p-value and possible duplicates. The duplicates are interactions
+#'            with the same resulting p-value up to 7 significant digits.
 #'
-#' @return The twostageGWAS object invisibly
+#' @return The \code{twostageGWAS} object invisibly
 #' @export
 #'
 #' @examples

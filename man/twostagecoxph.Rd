@@ -27,9 +27,10 @@ is marginally more significant than this threshold, it will be passed on to the 
 \item{multicore}{logical, default FALSE; whether or not the function should use multiple cores
 in its calculations. See Details.}
 
-\item{updatefile}{path to a text file where updates may be written. Necessary for parallel
+\item{updatefile}{A \link{connection} to a text file where updates may be written. Necessary for parallel
 computations, since the connection to the terminal will be lost. This
-file will in that case serve as a stand-in for the terminal.}
+file will in that case serve as a stand-in for the terminal. Default ""
+equals a connection to the terminal.}
 
 \item{control}{object of class \code{twostagecoxph.control} specifying various options for performance
 of the two stage method.}
@@ -61,11 +62,11 @@ tested with the method specified by the \code{multiple.hypotheses.correction} pa
 the interactions specified in this list. An interaction is said to be duplicate if the corresponding
 p-value is the same up until 7 significant figures. }
 }}
-\item{p.value.matrix}{A \code{sparseMatrix} from the package "Matrix", specifying the resulting
+\item{p.value.matrix}{A \code{sparseMatrix} object from the package \code{Matrix}, specifying the resulting
 upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
 is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
 tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
-of the dimensions of the matrix match the ones specified in the files, if the read.function assigns
+of the dimensions of the matrix match the ones specified in the files, if the \code{read.function} assigns
 dimnames to the matrix. The row and columns corresponding to covariates that were not named in the input
 matrix, have names '"NA"' (Note: not 'NA').}
 \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
@@ -100,7 +101,11 @@ user to make its own partition of the covariates into separate files.
 }
 \note{
 Parallel processing requires a properly registered parallel back-end, such as one obtained
-from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the \code{\%dopar\%} binary operator.
+from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the \code{\%dopar\%} binary operator. \cr \cr
+Be aware that any progress updates are only rough estimates of the current progress and remaining runtime.
+Since the parallel processes are not inter-connected, the estimates are based on the
+progress itself and therefore very unreliable if the fraction of processes to workers is
+low.
 }
 \examples{
 survival.dataset <- survival::Surv(c(5,5,3,3,2,2,2,1,1,1),

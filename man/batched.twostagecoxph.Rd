@@ -20,24 +20,24 @@ batched.twostagecoxph(
 
 \item{covariate.filepaths}{The vector of paths of the files containing the covariates. See Details.}
 
-\item{first.stage.threshold}{numeric scalar denoting the threshold for the first stage. If a covariate
+\item{first.stage.threshold}{Numeric scalar denoting the threshold for the first stage. If a covariate
 has a p-value lower than this threshold, it will be passed on to the second stage.}
 
 \item{multiple.hypotheses.correction}{Correction method, a character string. Passed to \code{\link{p.adjust}}}
 
-\item{updatefile}{path to a text file where updates may be written. Necessary for parallel
+\item{updatefile}{Path to a text file where updates may be written. Necessary for parallel
 computations, since the connection to the terminal will be lost. This
 file will in that case serve as a stand-in for the terminal.}
 
-\item{control}{object of class \code{twostagecoxph.control} specifying various options for performance
+\item{control}{Object of class \code{twostagecoxph.control} specifying various options for performance
 of the two stage method.}
 
-\item{number.of.covariates}{the combined total of covariates found in the files specified.
+\item{number.of.covariates}{The combined total of covariates found in the files specified.
 If left unspecified, the function will automatically determine this
 value by reading through all files before starting the analysis, thereby
 increasing runtimes.}
 
-\item{read.function}{function used to read batches of covariates from the files specified.
+\item{read.function}{Function used to read batches of covariates from the files specified.
 By default, this is \code{function(x) as.matrix(utils::read.table(x))}. Note that
 the first argument of the function will be used to pass the filepaths. See Details.}
 }
@@ -97,26 +97,26 @@ is registered, e.g. using doParallel::registerDoParallel(2).
 At all times on all registered cores, the contents of at most 2 files will be in memory.
 Take note however, that the results will be written to a matrix of substantial size
 (\code{covariates_per_file x total_number_of_covariates}) so it is best if enough memory
-is still available after reading the files.
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{       The function assumes that the object returned by \code{read.function} is a matrix containing
-       the covariates with one column per covariate and one row per subject This assumption
-       will only be checked once at function start. If the files are not structured the
-       same, the results may be unreliable or an error may be thrown. If the \code{read.function}
-       assignes dimnames to the columns, these names will be kept and passed on to the resulting
-       object. If not, the indices of the covariates (counting across all files) will be used as
-       the names.
-
-       The function
-       assumes the files have same number of covariates, except for the last one,
-       which may have less. \code{number.of.covariates}
-       will be divided by the amount of covariates per file, and the remainder of that division
-       \\emph\{must\} be the number of covariates in the last file.
-}\if{html}{\out{</div>}}
+is still available after reading the files. \cr \cr
+The function assumes that the object returned by \code{read.function} is a matrix containing
+the covariates with one column per covariate and one row per subject This assumption
+will only be checked once at function start. If the files are not structured the
+same, the results may be unreliable or an error may be thrown. If the \code{read.function}
+assignes dimnames to the columns, these names will be kept and passed on to the resulting
+object. If not, the indices of the covariates (counting across all files) will be used as
+the names. \cr \cr
+The function assumes the files have same number of covariates, except for the last one,
+which may have less. \code{number.of.covariates}
+will be divided by the amount of covariates per file, and the remainder of that division
+\emph{must} be the number of covariates in the last file.
 }
 \note{
 Parallel processing requires a properly registered parallel back-end, such as one obtained
-from "doParallel::registerDoParallel(2)" to be used by \code{foreach} and the \code{\%dopar\%} binary operator.
+from "doParallel::registerDoParallel(2)" to be used by \code{foreach} and the \code{\%dopar\%} binary operator. \cr \cr
+Be aware that any progress updates are only rough estimates of the current progress and remaining runtime.
+Since the parallel processes are not inter-connected, the estimates are based on the
+progress itself and therefore very unreliable if the fraction of processes to workers is
+low.
 }
 \examples{
 str(example_survival_data)
@@ -129,18 +129,25 @@ number.of.files <- 6
 temp.snpfile.paths <- tempfile(rep("snpfile", number.of.files),
                                tmpdir = tempdir(check = TRUE),
                                fileext = ".txt")
-indices.matrix <- matrix(c(seq_len(number.of.covs),
-                           rep(NA, ceiling(number.of.covs/number.of.files)*number.of.files - number.of.covs)),
-                         ncol = number.of.files)
+indices.matrix <-
+  matrix(c(seq_len(number.of.covs),
+           rep(NA, ceiling(number.of.covs/number.of.files)*number.of.files - number.of.covs)),
+         ncol = number.of.files)
 for(file.num in 1:number.of.files){
   indices <- indices.matrix[,file.num]
   write.table(example_snp_data[,indices[!is.na(indices)]], file = temp.snpfile.paths[file.num])
 }
 
+#make a file to get updates on the progress of the function
+updatefile <- tempfile("updatefile", fileext = ".txt")
+file(updatefile)
 
-print(foo <- batched.twostagecoxph(example_survival_data, temp.snpfile.paths,
-                                   number.of.covariates = number.of.covs,
-                                   first.stage.threshold = 1e-2))
+foo <- batched.twostagecoxph(example_survival_data, temp.snpfile.paths,
+                             number.of.covariates = number.of.covs,
+                             first.stage.threshold = 1e-2,
+                             updatefile = updatefile)
+readLines(updatefile)
+print(foo)
 }
 \seealso{
 \code{\link{foreach}}, \code{\link{print.twostageGWAS}}, \code{\link{twostagecoxph.control}}

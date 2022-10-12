@@ -7,15 +7,24 @@
 \method{print}{twostageGWAS}(x, \ldots)
 }
 \arguments{
-\item{x}{object of class twostageGWAS}
+\item{x}{object of class \code{twostageGWAS}}
 
-\item{...}{optional arguments passed on to cat and print.default functions.}
+\item{...}{optional arguments passed on to \code{cat} and \code{print.default} functions.}
 }
 \value{
-The twostageGWAS object invisibly
+The \code{twostageGWAS} object invisibly
 }
 \description{
 Print method for twostageGWAS objects
+}
+\details{
+prints a brief overview of the most relevant results (max 5) concluded from the two stage analysis.
+Includes the original call, the number of covariates deemed significant by the
+first stage and how many tests will be performed in the second stage.
+The last table shows the best results, ordered from lowest p-value to highest.
+The name of the interaction is given in the form 'name_cov_1 x name_cov_2' along
+with the corresponding p-value and possible duplicates. The duplicates are interactions
+with the same resulting p-value up to 7 significant digits.
 }
 \examples{
 survival.dataset <- survival::Surv(c(5,5,3,3,2,2,2,1,1,1),
