@@ -36,7 +36,7 @@ of the two stage method.}
 }
 \value{
 An object of class \code{twostageGWAS}, which is a list of 7 entries:
-\item{result.list}{A list containing the results in either 3 or 5 entries, depending on
+\item{result.list}{A list containing the results and where to find them in either 3 or 5 entries, depending on
 whether or not the covariates are named in the files:
 \describe{
 \item{\code{p.values}}{the non-trivial p-values of the interactions. The list is sorted in ascending

@@ -11,12 +11,12 @@ Description: Using a two stage method, it is possible to reduce the computationa
   but not on the scale of centuries, as is the case for a naive approach. This package implements a function
   for applying this method to data obtained in a GWAS. It is recommended to perform this method on a large machine, 
   preferrably with parallel computing options.
-  What the package does (one paragraph).
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.1
 Suggests: 
+    devtools,
     doParallel,
     knitr,
     rmarkdown,
@@ -30,6 +30,6 @@ Imports:
 URL: https://github.com/luckylluck2/twostageGWASsurvival
 BugReports: https://github.com/luckylluck2/twostageGWASsurvival/issues
 Depends: 
-    R (>= 2.10)
+    R (>= 3.5)
 LazyData: true
 VignetteBuilder: knitr

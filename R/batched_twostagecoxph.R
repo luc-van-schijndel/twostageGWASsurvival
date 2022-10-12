@@ -105,13 +105,15 @@
 #'
 #' #Split the covariate matrix into various files.
 #' number.of.covs <- dim(example_snp_data)[2]
-#' number.of.files <- 6 #500 is not a multiple of 500, so the last file has less covariates than the other ones
+#' number.of.files <- 6
+#' #500 is not a multiple of 500, so the last file has less covariates than the other ones
 #' temp.snpfile.paths <- tempfile(rep("snpfile", number.of.files),
 #'                                tmpdir = tempdir(check = TRUE),
 #'                                fileext = ".txt")
-#' indices.matrix <- matrix(c(seq_len(number.of.covs),
-#'                            rep(NA, ceiling(number.of.covs/number.of.files)*number.of.files - number.of.covs)),
-#'                          ncol = number.of.files)
+#' indices.matrix <-
+#'   matrix(c(seq_len(number.of.covs),
+#'            rep(NA, ceiling(number.of.covs/number.of.files)*number.of.files - number.of.covs)),
+#'          ncol = number.of.files)
 #' for(file.num in 1:number.of.files){
 #'   indices <- indices.matrix[,file.num]
 #'   write.table(example_snp_data[,indices[!is.na(indices)]], file = temp.snpfile.paths[file.num])
