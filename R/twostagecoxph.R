@@ -16,10 +16,11 @@
 #'                    in its calculations. See Details.
 #' @param updatefile A \link{connection} to a text file where updates may be written. Necessary for parallel
 #'                     computations, since the connection to the terminal will be lost. This
-#'                     file will in that case serve as a stand-in for the terminal. Default ""
+#'                     file will in that case serve as a stand-in for the terminal. Default
 #'                     equals a connection to the terminal.
 #' @param control object of class \code{twostagecoxph.control} specifying various options for performance
 #'                  of the two stage method.
+#' @param ... other arguments to be passed to all calls to \code{coxph()} in this function.
 #'
 #' @details It is shown in  that the two stages are independent of eachother. This results in
 #'          proper control of rate of type I errors by the multiple hypotheses correction method.
@@ -28,7 +29,7 @@
 #'          The main advantage is that only a fraction of the possible interactions is tested,
 #'          resulting in an enourmous decrease in computation times. \cr \cr
 #'          If \code{multicore} is \code{TRUE}, the function assumes a proper parallel back-end is registered,
-#'          e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by \code{foreach} and \code{%doPar%}. \cr \cr
+#'          e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by \code{foreach} and . \cr \cr
 #'          If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.
 #'          This function gives the user control in which parts of the set of covariates will
 #'          be in active memory, allowing for better memory management. This does require the
@@ -50,7 +51,7 @@
 #'   number of results reported is specified by the control parameter, default 5. The
 #'   list contains 3 items:
 #'   \describe{
-#'     \item{\code{interacting.snps}}{the names of the interaction, in "name_snp_1 x name_snp_2" format.
+#'     \item{\code{interacting.snps}}{the names of the interaction, in \code{name_snp_1 x name_snp_2} format.
 #'     In case the covariates in \code{covariate.matrix} have a names attribute, these names are used.
 #'     Otherwise the index of the covariates within the matrix is used.}
 #'     \item{\code{p.value.epistasis}}{the corresponding p-values of the interactions. Unless \code{return.raw = TRUE}
@@ -66,7 +67,7 @@
 #'     tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
 #'     of the dimensions of the matrix match the ones specified in the files, if the \code{read.function} assigns
 #'     dimnames to the matrix. The row and columns corresponding to covariates that were not named in the input
-#'     matrix, have names '"NA"' (Note: not 'NA').}
+#'     matrix, have the string \code{as.character(NA)} for names (Note: not NA itself).}
 #'   \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
 #'   were found to be marginally significant in the first stage. }
 #'   \item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
@@ -77,7 +78,7 @@
 #' @export
 #'
 #' @note Parallel processing requires a properly registered parallel back-end, such as one obtained
-#'         from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the \code{%dopar%} binary operator. \cr \cr
+#'         from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the  binary operator. \cr \cr
 #'         Be aware that in the case of parallel computations, any progress updates are only rough estimates of the current progress and remaining runtime.
 #'         Since the parallel processes are not inter-connected, the estimates are based on the
 #'         progress itself and therefore highly unreliable if the fraction of processes to workers is
@@ -110,17 +111,17 @@
 #' str(example_survival_data)
 #' str(example_snp_data)
 #'
-#' print(foo <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
-#'                            first.stage.threshold = 1e-5))
-#' print(bar <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
-#'                            first.stage.threshold = 1e-4))
-#' #[,1:300] subsetting is added to speed up the example. Try removing it! :)
+#' print(foo <- twostagecoxph(example_survival_data, example_snp_data[,1:200],
+#'                            first.stage.threshold = 5e-5))
+#' print(bar <- twostagecoxph(example_survival_data, example_snp_data[,1:200],
+#'                            first.stage.threshold = 5e-4))
+#' # The [,1:200] subsetting is added to speed up the example. Try removing it! :)
 #'
 #' # As we can see, foo and bar have different results. A lower FST generally gives more power, but it
 #' # it risks the possibility to be too strict and consequently *decreasing* power.
 twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold = 0.05,
                           multiple.hypotheses.correction = "bonferroni", multicore = FALSE,
-                          updatefile = "", control = twostagecoxph.control()){
+                          updatefile = "", control = twostagecoxph.control(), ...){
   report.lowest.amount = control$report.lowest.amount
   return.raw = control$return.raw
   progress = control$progress
@@ -177,7 +178,8 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
         max.coef = max.coef,
         upper.bound.correlation = upper.bound.correlation,
         snps.are.named = snps.are.named,
-        updatefile = updatefile
+        updatefile = updatefile,
+        ...
       )
   }
 
@@ -192,15 +194,17 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
         max.batchsize = max.batchsize,
         updatefile = updatefile,
         upper.bound.correlation = upper.bound.correlation,
-        snps.are.named = snps.are.named
+        snps.are.named = snps.are.named,
+        ...
       )
   }
 
-  if(length(ts.output$passed.indices) < 2){
+  if(length(ts.output$passed.indices) < 2 || length(ts.output$second.stage.sparse.matrix@x) < 1){
     total.runtime <- proc.time()[3] - start.time
     names(total.runtime) = c("seconds")
 
-    return.object <- list(most.significant.results = NA,
+    return.object <- list(result.list = NA,
+                          most.significant.results = NA,
                           p.value.matrix = NA,
                           marginal.significant = ts.output$passed.indices,
                           first.stage = ts.output$first.stage.p.values,
@@ -208,8 +212,6 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
                           runtime = total.runtime,
                           call = this.call)
     class(return.object) <- "twostageGWAS"
-
-
 
     return(return.object)
   }
@@ -219,7 +221,6 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   }
 
   unique.p.values <- unique(ts.output$second.stage.sparse.matrix@x)
-
   report.lowest.amount = min(report.lowest.amount, sum(unique.p.values < 1, na.rm = TRUE))
   if(report.lowest.amount > 0){
     fifth.lowest.unique <- stats::quantile(unique.p.values,
@@ -376,22 +377,6 @@ convergence.check <- function(coxph.model, max.coef = 5){
 }
 
 
-#' Calculates the optimal batch configuration
-#'
-#' @param no.covariates number of covariates to distribute
-#' @param max.batchsize upper limit on amount covariates in each batch
-#' @param no.workers number of workers
-#'
-#' @return a list of size 3, containing the number of covariates in each batch, the number of batches
-#' (including possible empty ones at the end, this way it always is a multiple of no.workers),
-#' and a vector of batchsizes for the last iteration (including trailing zeros)
-#'
-#' @details configures this in such a way that the number of covariates does not exceed the
-#' allowed maximum, while having each batch filled equally (not necessarily full). The last batch
-#' may be not fully filled. Made for the first stage, but easily adaptible to the second stage.
-#'
-#' Despite being useful, this function is unused for \code{batched.twostagecoxph}. This is due
-#' the fact that the batches in that function match up with the files provided by the user.
 optimal.batch.configuration <- function(no.covariates, max.batchsize, no.workers = 1){
   intermediate.no.batches <- min(ceiling(no.covariates/no.workers), max.batchsize)
   intermediate.batchsize <- ceiling(no.covariates/intermediate.no.batches)
@@ -413,7 +398,7 @@ optimal.batch.configuration <- function(no.covariates, max.batchsize, no.workers
 
 singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
                                      progress = 50, max.coef = 5, upper.bound.correlation = 0.95, snps.are.named = FALSE,
-                                     updatefile = ""){
+                                     updatefile = "", ...){
   first.stage.result <-
     firststagecoxph(
       survival.dataset,
@@ -421,7 +406,8 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
       progress,
       max.coef,
       snps.are.named = snps.are.named,
-      updatefile = updatefile
+      updatefile = updatefile,
+      ...
     )
   if(snps.are.named) {
     names(first.stage.result) = dimnames(covariate.matrix)[[2]]
@@ -456,7 +442,7 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
       if(prefitting.check.two(covariate.one, covariate.two, upper.bound.correlation)) {
         withCallingHandlers(
           fitted.model <-
-            coxph(survival.dataset ~ covariate.one * covariate.two),
+            coxph(survival.dataset ~ covariate.one * covariate.two, ...),
           warning = function(w) {
             #print(w)
             #print(str(w))
@@ -515,58 +501,9 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
 
 
 
-#' Multicore method of performing the second stage
-#'
-#' @param survival.dataset the outcome data
-#' @param covariate.matrix The SNPs
-#' @param first.stage.threshold the FST
-#' @param progress set to 0 for no updates
-#' @param max.coef maximum value of fitted weights before declared non-converged
-#' @param updatefile path to that file
-#' @param max.batchsize max number of covariates in one batch
-#' @param upper.bound.correlation upper bound on the correlation before not checked
-#' @param snps.are.named whether or not the covariates have names
-#'
-#' @return list of p-value matrix, first stage p-values and which ones passed.
-#'
-#' @details Similarly to the multicore method of the first stage, this function works with
-#'   batches of covariates to alleviate possible memory issues. The optimal size of the batches
-#'   is calculated in a similar fashion as during the first stage, only here we halve the maximum
-#'   batchsize, since (almost always) two batches of covariates will be in memory at the same time.
-#'
-#'   The testing for interactions is done in a first-in, last-out approach. The first batch of
-#'   covariates will be tested for interactions with itself, then for with all covariates from
-#'   subsequent batches. The second batch does not need to test for interactions with the first one,
-#'   since the first one already did that. This allows the second batch to be done before the first one,
-#'   hence the "first-in, last-out" naming. The number of batches will always be a multiple of
-#'   two times the number of worker cores; this should ensure that all workers should be done
-#'   at the same time.
-#'
-#'   There is quite some code-duplication going on (DRY! OMG! U NUB), but that's for a reason. Function
-#'   calls in R have a tiny bit of overhead, and since we would do these function-calls a lot (and I mean a LOT)
-#'   of times, I have opted to simply copy the function's code into this function itself, and forego
-#'   the function itself.
-#'
-#'
-#'   Since this function is not exported, I will discusse the 6 indices found in the for-loops
-#'   (at some point we are 4 for-loops deep)
-#'   Firstly, we have the index(es) of the batch(es) that we are currently using. These are quite
-#'   selfexplanatory.
-#'   Secondly, the "real" indices in the batch. These correspond to the indices of the covariates
-#'   within the entire covariate matrix. Therefore, for the very first batch, when these are just
-#'   1:batchsize, but they will differ for further batches.
-#'   Thirdly, the local index. These are simply the index of the covariates within the batch itself.
-#'   These will therefore always start at 1 and not exceed max.batchsize.
-#'   Lastly, we also have the vector of passed indices. These correspond to the covariates that
-#'   were found to be marginally significant.
-#'
-#'   Using these indices, we can get all variables we want in all cases, although we sometimes
-#'   need to use triple subsets.
-#'
-#'
 multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
                                      progress = 50, max.coef = 5, updatefile = "", max.batchsize = 1000,
-                                    upper.bound.correlation = 0.95, snps.are.named = FALSE){
+                                    upper.bound.correlation = 0.95, snps.are.named = FALSE, ...){
   first.stage.list <-
     firststagecoxph.multicore(
       survival.dataset = survival.dataset,
@@ -575,7 +512,8 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
       max.coef = max.coef,
       max.batchsize = max.batchsize,
       updatefile = updatefile,
-      snps.are.named = snps.are.named
+      snps.are.named = snps.are.named,
+      ...
     )
 
   #unlist the result:
@@ -658,7 +596,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
         if(prefitting.check.two(covariate.one, covariate.two, upper.bound.correlation)){
           withCallingHandlers(
             fitted.model <-
-              coxph(survival.dataset ~ covariate.one * covariate.two),
+              coxph(survival.dataset ~ covariate.one * covariate.two, ...),
             warning = function(w) {
               #print(w)
               #print(str(w))
@@ -713,7 +651,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
             if(prefitting.check.two(covariate.one, covariate.two, upper.bound.correlation)){
               withCallingHandlers(
                 fitted.model <-
-                  coxph(survival.dataset ~ covariate.one * covariate.two),
+                  coxph(survival.dataset ~ covariate.one * covariate.two, ...),
                 warning = function(w) {
                   #print(w)
                   #print(str(w))
@@ -781,7 +719,8 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
 }
 
 
-firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, max.coef = 5, snps.are.named = FALSE, updatefile = updatefile){
+firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, max.coef = 5,
+                            snps.are.named = FALSE, updatefile = updatefile, ...){
   start.time.first.stage <- proc.time()[3]
   p.value.vector <- rep(NA, length = dim(covariate.matrix)[2])
   for(covariate.index in 1:length(p.value.vector)){
@@ -789,7 +728,7 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
     if(prefitting.check.one(this.covariate)){
       withCallingHandlers(
         fitted.model <-
-          coxph(survival.dataset ~ this.covariate),
+          coxph(survival.dataset ~ this.covariate, ...),
         warning = function(w) {
           #print(w)
           #print(str(w))
@@ -834,39 +773,9 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
 }
 
 
-#' Perform the first stage of a GWAS in parallel
-#'
-#' @param survival.dataset the outcomes
-#' @param covariate.matrix the covariates
-#' @param progress how often progress must be reported
-#' @param max.coef what the maximum coefficients may be when fitting
-#' @param max.batchsize what the maximum batchsize must be.
-#' @param updatefile path to file to replace terminal
-#' @param snps.are.named wheter or not the covariates have names
-#'
-#' @return the p-values of the first stage (possibly in random order) with proper names() attribute.
-#'          As a consequence of possible empty batches, there may be trailing NA's. Ironically however,
-#'          these are  not guaranteed to be trailing, due to the fact that batches can finish
-#'          in any order. They are identified by their names attribute being empty: "".
-#'
-#' @importFrom foreach %dopar%
-#' @importFrom survival coxph
-#'
-#' @details
-#' The covariates are split into a number of batches. The amount of covariates in every batch
-#' is optimal, i.e. the load is distributed equally over all batches, the number
-#' of covariates in each batch does not exceed max.batchsize, and the number of batches is a
-#' multiple of the number of worker-processes.
-#' These batches are then analysed in parallel by the worker-processes that return the
-#' corresponding p-values of the marginal associations of the covariates. These p-values have
-#' their names attribute set to the index of the covariate, so that the processes do not need
-#' to finish in order. If they do not, the order of the returned p-values will not match up
-#' with the order in which the covariates were provided, so this problem is avoided.
-#'
-#'
-#'
 firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progress = 50,
-                                      max.coef = 5, max.batchsize = 1000, updatefile = "", snps.are.named = FALSE){
+                                      max.coef = 5, max.batchsize = 1000, updatefile = "",
+                                      snps.are.named = FALSE, ...){
   start.time.first.stage <- proc.time()[3]
 
   no.covariates <- dim(covariate.matrix)[2]
@@ -900,7 +809,7 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
       if(prefitting.check.one(this.covariate)){
         withCallingHandlers(
           fitted.model <-
-            coxph(survival.dataset ~ this.covariate),
+            coxph(survival.dataset ~ this.covariate, ...),
           warning = function(w) {
             #print(w)
             #print(str(w))
@@ -968,7 +877,7 @@ clear.current.line <- function(updatefile = ""){
 #'            Includes the original call, the number of covariates deemed significant by the
 #'            first stage and how many tests will be performed in the second stage.
 #'            The last table shows the best results, ordered from lowest p-value to highest.
-#'            The name of the interaction is given in the form 'name_cov_1 x name_cov_2' along
+#'            The name of the interaction is given in the form \code{name_cov_1 x name_cov_2} along
 #'            with the corresponding p-value and possible duplicates. The duplicates are interactions
 #'            with the same resulting p-value up to 7 significant digits.
 #'
@@ -999,7 +908,7 @@ print.twostageGWAS <- function(x, ...){
   cat(length(x$marginal.significant), " covariates were marginally significant at level ",
       x$fst, ", resulting in ", round(length(x$marginal.significant)*(length(x$marginal.significant)-1)/2),
       " second stage tests.\n\n", sep = "", ...)
-  if(length(x$most.significant.results) == 0){
+  if(sum(!is.na(x$most.significant.results)) == 0){
     cat("No relevant results were found after applying the multiple hypotheses correction.", ...)
   } else{
     cat("These are the most significant interactions found with their respective p-values:\n", ...)

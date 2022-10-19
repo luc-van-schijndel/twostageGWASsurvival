@@ -11,7 +11,8 @@ twostagecoxph(
   multiple.hypotheses.correction = "bonferroni",
   multicore = FALSE,
   updatefile = "",
-  control = twostagecoxph.control()
+  control = twostagecoxph.control(),
+  ...
 )
 }
 \arguments{
@@ -29,53 +30,55 @@ in its calculations. See Details.}
 
 \item{updatefile}{A \link{connection} to a text file where updates may be written. Necessary for parallel
 computations, since the connection to the terminal will be lost. This
-file will in that case serve as a stand-in for the terminal. Default ""
+file will in that case serve as a stand-in for the terminal. Default
 equals a connection to the terminal.}
 
 \item{control}{object of class \code{twostagecoxph.control} specifying various options for performance
 of the two stage method.}
+
+\item{...}{other arguments to be passed to all calls to \code{coxph()} in this function.}
 }
 \value{
 An object of class \code{twostageGWAS}, which is a list of 7 entries:
-\item{result.list}{A list containing the results and where to find them in either 3 or 5 entries, depending on
-whether or not the covariates are named in the files:
-\describe{
-\item{\code{p.values}}{the non-trivial p-values of the interactions. The list is sorted in ascending
-order by this value. Any p-values that are either NA, 0, or 1 after possibly applying the
-multiple hypotheses correction will not be present in this vector.}
-\item{\code{index.one}, \code{index.two}}{the indices describing the two covariates that
-describe the interaction corresponding to the p-values in the previous entry. }
-\item{\code{names.one}, \code{names.two}}{if the covariates are named, these are the names
-of the covariates found on the aforementioned indices.}
-}}
-\item{most.significant.results}{A list describing the most significant results found. The
-number of results reported is specified by the control parameter, default 5. The
-list contains 3 items:
-\describe{
-\item{\code{interacting.snps}}{the names of the interaction, in "name_snp_1 x name_snp_2" format.
-In case the covariates in \code{covariate.matrix} have a names attribute, these names are used.
-Otherwise the index of the covariates within the matrix is used.}
-\item{\code{p.value.epistasis}}{the corresponding p-values of the interactions. Unless \code{return.raw = TRUE}
-is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
-tested with the method specified by the \code{multiple.hypotheses.correction} parameter.}
-\item{\code{duplicate.interactions}}{the list of duplicate interactions found, corresponding to
-the interactions specified in this list. An interaction is said to be duplicate if the corresponding
-p-value is the same up until 7 significant figures. }
-}}
-\item{p.value.matrix}{A \code{sparseMatrix} object from the package \code{Matrix}, specifying the resulting
-upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
-is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
-tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
-of the dimensions of the matrix match the ones specified in the files, if the \code{read.function} assigns
-dimnames to the matrix. The row and columns corresponding to covariates that were not named in the input
-matrix, have names '"NA"' (Note: not 'NA').}
-\item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
-were found to be marginally significant in the first stage. }
-\item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
-are \emph{not} corrected for the multiple tested hypotheses. }
-\item{fst}{The threshold for significance used in the first stage as specified in \code{first.stage.threshold}}
-\item{runtime}{The total runtime of the function in seconds.}
-\item{call}{The matched call.}
+  \item{result.list}{A list containing the results and where to find them in either 3 or 5 entries, depending on
+  whether or not the covariates are named in the files:
+  \describe{
+    \item{\code{p.values}}{the non-trivial p-values of the interactions. The list is sorted in ascending
+    order by this value. Any p-values that are either NA, 0, or 1 after possibly applying the
+    multiple hypotheses correction will not be present in this vector.}
+    \item{\code{index.one}, \code{index.two}}{the indices describing the two covariates that
+    describe the interaction corresponding to the p-values in the previous entry. }
+    \item{\code{names.one}, \code{names.two}}{if the covariates are named, these are the names
+    of the covariates found on the aforementioned indices.}
+  }}
+  \item{most.significant.results}{A list describing the most significant results found. The
+  number of results reported is specified by the control parameter, default 5. The
+  list contains 3 items:
+  \describe{
+    \item{\code{interacting.snps}}{the names of the interaction, in \code{name_snp_1 x name_snp_2} format.
+    In case the covariates in \code{covariate.matrix} have a names attribute, these names are used.
+    Otherwise the index of the covariates within the matrix is used.}
+    \item{\code{p.value.epistasis}}{the corresponding p-values of the interactions. Unless \code{return.raw = TRUE}
+    is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
+    tested with the method specified by the \code{multiple.hypotheses.correction} parameter.}
+    \item{\code{duplicate.interactions}}{the list of duplicate interactions found, corresponding to
+    the interactions specified in this list. An interaction is said to be duplicate if the corresponding
+    p-value is the same up until 7 significant figures. }
+  }}
+  \item{p.value.matrix}{A \code{sparseMatrix} object from the package \code{Matrix}, specifying the resulting
+  upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
+    is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
+    tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
+    of the dimensions of the matrix match the ones specified in the files, if the \code{read.function} assigns
+    dimnames to the matrix. The row and columns corresponding to covariates that were not named in the input
+    matrix, have the string \code{as.character(NA)} for names (Note: not NA itself).}
+  \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
+  were found to be marginally significant in the first stage. }
+  \item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
+  are \emph{not} corrected for the multiple tested hypotheses. }
+  \item{fst}{The threshold for significance used in the first stage as specified in \code{first.stage.threshold}}
+  \item{runtime}{The total runtime of the function in seconds.}
+  \item{call}{The matched call.}
 }
 \description{
 Performs a two stage analysis to find possible interactions influencing the time to event assuming
@@ -87,25 +90,25 @@ interaction effect.
 }
 \details{
 It is shown in  that the two stages are independent of eachother. This results in
-proper control of rate of type I errors by the multiple hypotheses correction method.
-The power is also increased compared to a naive method, due to the fact that less
-hypotheses are tested in the second stage resulting in a less strict correction.
-The main advantage is that only a fraction of the possible interactions is tested,
-resulting in an enourmous decrease in computation times. \cr \cr
-If \code{multicore} is \code{TRUE}, the function assumes a proper parallel back-end is registered,
-e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by \code{foreach} and \code{\%doPar\%}. \cr \cr
-If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.
-This function gives the user control in which parts of the set of covariates will
-be in active memory, allowing for better memory management. This does require the
-user to make its own partition of the covariates into separate files.
+         proper control of rate of type I errors by the multiple hypotheses correction method.
+         The power is also increased compared to a naive method, due to the fact that less
+         hypotheses are tested in the second stage resulting in a less strict correction.
+         The main advantage is that only a fraction of the possible interactions is tested,
+         resulting in an enourmous decrease in computation times. \cr \cr
+         If \code{multicore} is \code{TRUE}, the function assumes a proper parallel back-end is registered,
+         e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by \code{foreach} and . \cr \cr
+         If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.
+         This function gives the user control in which parts of the set of covariates will
+         be in active memory, allowing for better memory management. This does require the
+         user to make its own partition of the covariates into separate files.
 }
 \note{
 Parallel processing requires a properly registered parallel back-end, such as one obtained
-from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the \code{\%dopar\%} binary operator. \cr \cr
-Be aware that in the case of parallel computations, any progress updates are only rough estimates of the current progress and remaining runtime.
-Since the parallel processes are not inter-connected, the estimates are based on the
-progress itself and therefore highly unreliable if the fraction of processes to workers is
-relatively low.
+        from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the  binary operator. \cr \cr
+        Be aware that in the case of parallel computations, any progress updates are only rough estimates of the current progress and remaining runtime.
+        Since the parallel processes are not inter-connected, the estimates are based on the
+        progress itself and therefore highly unreliable if the fraction of processes to workers is
+        relatively low.
 }
 \examples{
 survival.dataset <- survival::Surv(c(5,5,3,3,2,2,2,1,1,1),
@@ -127,11 +130,11 @@ twostagecoxph(survival.dataset, covariate.matrix,
 str(example_survival_data)
 str(example_snp_data)
 
-print(foo <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
-                           first.stage.threshold = 1e-5))
-print(bar <- twostagecoxph(example_survival_data, example_snp_data[,1:300],
-                           first.stage.threshold = 1e-4))
-#[,1:300] subsetting is added to speed up the example. Try removing it! :)
+print(foo <- twostagecoxph(example_survival_data, example_snp_data[,1:200],
+                           first.stage.threshold = 5e-5))
+print(bar <- twostagecoxph(example_survival_data, example_snp_data[,1:200],
+                           first.stage.threshold = 5e-4))
+# The [,1:200] subsetting is added to speed up the example. Try removing it! :)
 
 # As we can see, foo and bar have different results. A lower FST generally gives more power, but it
 # it risks the possibility to be too strict and consequently *decreasing* power.

@@ -42,6 +42,6 @@ a list containing the values of each of the above constants.
 }
 \description{
 This is used to set various numeric parameters controlling the operation of the
-two stage method performed by \code{twostagecoxph}. Typically it would only be used
-in a call to \code{twostagecoxph}.
+               two stage method performed by \code{twostagecoxph}. Typically it would only be used
+               in a call to \code{twostagecoxph}.
 }

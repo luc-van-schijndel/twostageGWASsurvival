@@ -43,50 +43,50 @@ the first argument of the function will be used to pass the filepaths. See Detai
 }
 \value{
 A twostageGWAS object, which is a list of 7 entries:
-\item{result.list}{A list containing the results and where to find them in either 5 or 7 entries, depending on
-whether or not the covariates are named in the files:
-\describe{
-\item{\code{p.values}}{the non-trivial p-values of the interactions. The list is sorted in ascending
-order by this value. Any p-values that are either NA, 0, or 1 after possibly applying the
-multiple hypotheses correction will not be present in this vector.}
-\item{\code{batch.one}, \code{index.one}, \code{batch.two}, \code{index.two}}{
-the indices describing where to find the two covariates that
-describe the interaction corresponding to the p-values in the previous entry. \code{batch.one}
-and \code{batch.two} give the indices of the files as described in \code{covariate.filepaths}
-containing the two covariates. \code{index.one} and \code{index.two} give the indices of
-the covariates \emph{within} those files, i.e. the local indices.}
-\item{\code{names.one}, \code{names.two}}{if the covariates are named, these are the names
-of the covariates found on the aforementioned indices.}
-}}
-\item{most.significant.results}{A list describing the most significant results found used
-primarily by the print method. The
-number of results reported is specified by the control parameter, default 5. The
-list contains 3 items:
-\describe{
-\item{\code{interacting.snps}}{the names of the interaction, in "name_snp_1 x name_snp_2" format.
-In case the covariates in \code{covariate.matrix} have a names attribute, these names are used.
-Otherwise the index of the covariates within the matrix is used.}
-\item{\code{p.value.epistasis}}{the corresponding p-values of the interactions. Unless \code{return.raw = TRUE}
-is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
-tested with the method specified by the \code{multiple.hypotheses.correction} parameter.}
-\item{\code{duplicate.interactions}}{the list of duplicate interactions found, corresponding to
-the interactions specified in this list. An interaction is said to be duplicate if the corresponding
-p-value is the same up until 7 significant figures. }
-}}
-\item{p.value.matrix}{A \code{sparseMatrix} from the package "Matrix", specifying the resulting
-upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
-is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
-tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
-of the dimensions of the matrix match the ones specified in the files, if the read.function assigns
-dimnames to the matrix. The row and columns corresponding to covariates that were not passed to
-the second stage, have names '"NA"' (Note: not 'NA'). The entries in these rows and columns are also all absent.}
-\item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
-were found to be marginally significant in the first stage. }
-\item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
-are \emph{not} corrected for the multiple tested hypotheses. }
-\item{fst}{The threshold for significance used in the first stage as specified in \code{first.stage.threshold}}
-\item{runtime}{The total runtime of the function in seconds.}
-\item{call}{The matched call.}
+  \item{result.list}{A list containing the results and where to find them in either 5 or 7 entries, depending on
+  whether or not the covariates are named in the files:
+  \describe{
+    \item{\code{p.values}}{the non-trivial p-values of the interactions. The list is sorted in ascending
+    order by this value. Any p-values that are either NA, 0, or 1 after possibly applying the
+    multiple hypotheses correction will not be present in this vector.}
+    \item{\code{batch.one}, \code{index.one}, \code{batch.two}, \code{index.two}}{
+    the indices describing where to find the two covariates that
+    describe the interaction corresponding to the p-values in the previous entry. \code{batch.one}
+    and \code{batch.two} give the indices of the files as described in \code{covariate.filepaths}
+    containing the two covariates. \code{index.one} and \code{index.two} give the indices of
+    the covariates \emph{within} those files, i.e. the local indices.}
+    \item{\code{names.one}, \code{names.two}}{if the covariates are named, these are the names
+    of the covariates found on the aforementioned indices.}
+  }}
+  \item{most.significant.results}{A list describing the most significant results found used
+  primarily by the print method. The
+  number of results reported is specified by the control parameter, default 5. The
+  list contains 3 items:
+  \describe{
+    \item{\code{interacting.snps}}{the names of the interaction, in \code{name_snp_1 x name_snp_2} format.
+    In case the covariates in \code{covariate.matrix} have a names attribute, these names are used.
+    Otherwise the index of the covariates within the matrix is used.}
+    \item{\code{p.value.epistasis}}{the corresponding p-values of the interactions. Unless \code{return.raw = TRUE}
+    is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
+    tested with the method specified by the \code{multiple.hypotheses.correction} parameter.}
+    \item{\code{duplicate.interactions}}{the list of duplicate interactions found, corresponding to
+    the interactions specified in this list. An interaction is said to be duplicate if the corresponding
+    p-value is the same up until 7 significant figures. }
+  }}
+  \item{p.value.matrix}{A \code{sparseMatrix} from the package \code{Matrix}, specifying the resulting
+  upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
+    is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
+    tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
+    of the dimensions of the matrix match the ones specified in the files, if the read.function assigns
+    dimnames to the matrix. The row and columns corresponding to covariates that were not passed to
+    the second stage, have the string \code{as.character(NA)} as names (Note: not NA itself). The entries in these rows and columns are also all absent.}
+  \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
+  were found to be marginally significant in the first stage. }
+  \item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
+  are \emph{not} corrected for the multiple tested hypotheses. }
+  \item{fst}{The threshold for significance used in the first stage as specified in \code{first.stage.threshold}}
+  \item{runtime}{The total runtime of the function in seconds.}
+  \item{call}{The matched call.}
 }
 \description{
 An adaptation of \code{\link{twostagecoxph}} where the covariates will be read from multiple files.
@@ -95,32 +95,35 @@ is registered, e.g. using doParallel::registerDoParallel(2).
 }
 \details{
 At all times on all registered cores, the contents of at most 2 files will be in memory.
-Take note however, that the results will be written to a matrix of substantial size
-(\code{covariates_per_file x total_number_of_covariates}) so it is best if enough memory
-is still available after reading the files. \cr \cr
-The function assumes that the object returned by \code{read.function} is a matrix containing
-the covariates with one column per covariate and one row per subject This assumption
-will only be checked once at function start. If the files are not structured the
-same, the results may be unreliable or an error may be thrown. If the \code{read.function}
-assignes dimnames to the columns, these names will be kept and passed on to the resulting
-object. If not, the indices of the covariates (counting across all files) will be used as
-the names. \cr \cr
-The function assumes the files have same number of covariates, except for the last one,
-which may have less. \code{number.of.covariates}
-will be divided by the amount of covariates per file, and the remainder of that division
-\emph{must} be the number of covariates in the last file.
+           Take note however, that the results will be written to a matrix of substantial size
+           (\code{covariates_per_file x total_number_of_covariates}) so it is best if enough memory
+           is still available after reading the files. \cr \cr
+           The function assumes that the object returned by \code{read.function} is a matrix containing
+           the covariates with one column per covariate and one row per subject This assumption
+           will only be checked once at function start. If the files are not structured the
+           same, the results may be unreliable or an error may be thrown. If the \code{read.function}
+           assignes dimnames to the columns, these names will be kept and passed on to the resulting
+           object. If not, the indices of the covariates (counting across all files) will be used as
+           the names. \cr \cr
+           The function assumes the files have same number of covariates, except for the last one,
+           which may have less. \code{number.of.covariates}
+           will be divided by the amount of covariates per file, and the remainder of that division
+           \emph{must} be the number of covariates in the last file.
 }
 \note{
 Parallel processing requires a properly registered parallel back-end, such as one obtained
-from "doParallel::registerDoParallel(2)" to be used by \code{foreach} and the \code{\%dopar\%} binary operator. \cr \cr
-Be aware that any progress updates are only rough estimates of the current progress and remaining runtime.
-Since the parallel processes are not inter-connected, the estimates are based on the
-progress itself and therefore highly unreliable if the fraction of processes to workers is
-relatively low.
+        from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the  binary operator. \cr \cr
+        Be aware that any progress updates are only rough estimates of the current progress and remaining runtime.
+        Since the parallel processes are not inter-connected, the estimates are based on the
+        progress itself and therefore highly unreliable if the fraction of processes to workers is
+        relatively low.
 }
 \examples{
 str(example_survival_data)
 str(example_snp_data)
+
+#We shrink the example to run faster, try altering this! :)
+example_snp_data <- example_snp_data[,1:100]
 
 #Split the covariate matrix into various files.
 number.of.covs <- dim(example_snp_data)[2]

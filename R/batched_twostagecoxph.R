@@ -59,7 +59,7 @@
 #'   number of results reported is specified by the control parameter, default 5. The
 #'   list contains 3 items:
 #'   \describe{
-#'     \item{\code{interacting.snps}}{the names of the interaction, in "name_snp_1 x name_snp_2" format.
+#'     \item{\code{interacting.snps}}{the names of the interaction, in \code{name_snp_1 x name_snp_2} format.
 #'     In case the covariates in \code{covariate.matrix} have a names attribute, these names are used.
 #'     Otherwise the index of the covariates within the matrix is used.}
 #'     \item{\code{p.value.epistasis}}{the corresponding p-values of the interactions. Unless \code{return.raw = TRUE}
@@ -69,13 +69,13 @@
 #'     the interactions specified in this list. An interaction is said to be duplicate if the corresponding
 #'     p-value is the same up until 7 significant figures. }
 #'   }}
-#'   \item{p.value.matrix}{A \code{sparseMatrix} from the package "Matrix", specifying the resulting
+#'   \item{p.value.matrix}{A \code{sparseMatrix} from the package \code{Matrix}, specifying the resulting
 #'   upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
 #'     is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
 #'     tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
 #'     of the dimensions of the matrix match the ones specified in the files, if the read.function assigns
 #'     dimnames to the matrix. The row and columns corresponding to covariates that were not passed to
-#'     the second stage, have names '"NA"' (Note: not 'NA'). The entries in these rows and columns are also all absent.}
+#'     the second stage, have the string \code{as.character(NA)} as names (Note: not NA itself). The entries in these rows and columns are also all absent.}
 #'   \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
 #'   were found to be marginally significant in the first stage. }
 #'   \item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
@@ -86,7 +86,7 @@
 #' @export
 #'
 #' @note Parallel processing requires a properly registered parallel back-end, such as one obtained
-#'         from "doParallel::registerDoParallel(2)" to be used by \code{foreach} and the \code{%dopar%} binary operator. \cr \cr
+#'         from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the  binary operator. \cr \cr
 #'         Be aware that any progress updates are only rough estimates of the current progress and remaining runtime.
 #'         Since the parallel processes are not inter-connected, the estimates are based on the
 #'         progress itself and therefore highly unreliable if the fraction of processes to workers is
@@ -103,6 +103,9 @@
 #' @examples
 #' str(example_survival_data)
 #' str(example_snp_data)
+#'
+#' #We shrink the example to run faster, try altering this! :)
+#' example_snp_data <- example_snp_data[,1:100]
 #'
 #' #Split the covariate matrix into various files.
 #' number.of.covs <- dim(example_snp_data)[2]
@@ -322,77 +325,6 @@ batched.twostagecoxph <- function(survival.dataset, covariate.filepaths, first.s
 
 
 
-#' Multicore method of performing the second stage
-#'
-#' @param survival.dataset the outcome data
-#' @param first.stage.threshold the FST
-#' @param progress set to 0 for no updates
-#' @param max.coef maximum value of fitted weights before declared non-converged
-#' @param updatefile path to that file
-#' @param max.batchsize max number of covariates in one batch
-#' @param upper.bound.correlation upper bound on the correlation before not checked
-#' @param read.function the function used to read covariate batches
-#' @param covariate.filepaths paths to the files containing the covariates
-#' @param number.of.covariates combined total of covariates in all files
-#' @param snps.are.named boolean, whether or not the snps will be named when read from file.
-#' @param number.of.subjects Total number of subjects in all files
-#'
-#' @return list of p-value matrix, first stage p-values and which ones passed.
-#'
-#' @details Similarly to the multicore method of the first stage, this function works with
-#'   batches of covariates to alleviate possible memory issues. The optimal size of the batches
-#'   is calculated in a similar fashion as during the first stage, only here we halve the maximum
-#'   batchsize, since (almost always) two batches of covariates will be in memory at the same time.
-#'
-#'   The testing for interactions is done in a first-in, last-out approach. The first batch of
-#'   covariates will be tested for interactions with itself, then for with all covariates from
-#'   subsequent batches. The second batch does not need to test for interactions with the first one,
-#'   since the first one already did that. This allows the second batch to be done before the first one,
-#'   hence the "first-in, last-out" naming. The number of batches will always be a multiple of
-#'   two times the number of worker cores; this should ensure that all workers should be done
-#'   at the same time.
-#'
-#'   There is quite some code-duplication going on (DRY! OMG! U NUB), but that's for a reason. Function
-#'   calls in R have a tiny bit of overhead, and since we would do these function-calls a lot (and I mean a LOT)
-#'   of times, I have opted to simply copy the function's code into this function itself, and forego
-#'   the function itself.
-#'
-#'
-#'   Since this function is not exported, I will discusse the 6 indices found in the for-loops
-#'   (at some point we are 4 for-loops deep)
-#'   first.batch.real.indices
-#'   first/second.local.index
-#'   first/second.covariate.index
-#'
-#'   passed.indices are not used here (only returned), since amount.rejections is better since
-#'   possible NAs have been removed.
-#'
-#'   Reading from given files in combination with a maximum batchsize becomes... interesting.
-#'   Firstly: note that opening a connection to a file has overhead, so we wish to
-#'   avoid doing this as much as possible. This leads us to the following consideration.
-#'   Since the files, and consequently the covariates within, are fixed and determined before
-#'   the results of the first stage are available, we can have... suboptimal... cases. What if
-#'   all covariates from one file are all rejected? Or only one for each file? What do we do then?
-#'   Ideally, we would put all the rejected covariates in new files, matching the sizes of the
-#'   original files (to allow for memory-usage control), but that would be non-sensical. That is,
-#'   because then we would read all files individually into memory, and then write to storage again,
-#'   and finally read into memory again, and only then, after all this reading and writing would
-#'   the analysis begin.
-#'   The solution I chose is to group subsequent files together, in such a way that the relevant,
-#'   i.e. rejected in first stage, covariates from one group do not exceed the amount of covariates
-#'   typically found in one file. That way the memory-usage can still be controlled by the user,
-#'   by adjusting their files (which they would have done already for the first stage), while still
-#'   having a reasonable performance. It is true that this leads to inefficiencies. For example, say
-#'   that the first 3 batches have 40% of their covariates rejected in the first stage. Then in the
-#'   second stage, we will only read the first 2 batches, resulting in 20% of the memory-capacity not
-#'   being used optimally, but this is a worthwile sacrifice in my opinion.
-#'   Another option would be to write or find a optimization algorithm that would rearrange the batches
-#'   so the abovementioned method would waste as little memory as possible. But that algorithm would
-#'   also introduce overhead, and e.g. a naive approach to this problem (try every possible permutation)
-#'   would be of complexity O(n!) with n the number of batches. Maybe an efficient algorithm exists,
-#'   but I'm too lazy to implement this. The number of batches should ideally be too large, so it is
-#'   not that big of a deal. Anyway, that is therefore why the indices for each batch may look odd.
-#'
 batched.secondstagecoxph <- function(survival.dataset, covariate.filepaths, first.stage.threshold,
                                   progress = 50, max.coef = 5, updatefile = "", max.batchsize = 1000,
                                   upper.bound.correlation = 0.95,
@@ -652,40 +584,6 @@ batched.secondstagecoxph <- function(survival.dataset, covariate.filepaths, firs
 
 
 
-#' Perform the first stage of a GWAS in parallel
-#'
-#' @param survival.dataset the outcomes
-#' @param progress how often progress must be reported
-#' @param max.coef what the maximum coefficients may be when fitting
-#' @param max.batchsize what the maximum batchsize must be.
-#' @param updatefile path to file to replace terminal
-#' @param covariate.filepaths paths to the files containing covariates
-#' @param read.function function used to read covariates
-#' @param number.of.covariates combined total of covariates in all files
-#' @param snps.are.named boolean, whether or not the covariates will be named when read from file
-#'
-#' @return the p-values of the first stage (in random order) in a list. This list contains the
-#'          p-values, the names and the original index (for reordering later).
-#'          As a consequence of possible empty batches, there may be trailing NA's. Ironically however,
-#'          these are  not guaranteed to be trailing, due to the fact that batches can finish
-#'          in any order. They are identified by their names attribute being empty: "".
-#'
-#' @importFrom foreach %dopar%
-#' @importFrom survival coxph
-#'
-#' @details
-#' The covariates are split into a number of batches. The amount of covariates in every batch
-#' is optimal, i.e. the load is distributed equally over all batches, the number
-#' of covariates in each batch does not exceed max.batchsize, and the number of batches is a
-#' multiple of the number of worker-processes.
-#' These batches are then analysed in parallel by the worker-processes that return the
-#' corresponding p-values of the marginal associations of the covariates. These p-values have
-#' their names attribute set to the index of the covariate, so that the processes do not need
-#' to finish in order. If they do not, the order of the returned p-values will not match up
-#' with the order in which the covariates were provided, so this problem is avoided.
-#'
-#'
-#'
 batched.firststagecoxph <- function(survival.dataset, covariate.filepaths, progress = 50,
                                       max.coef = 5, max.batchsize = 1000, updatefile = "",
                                     read.function = function(x) as.matrix(read.table(x)),

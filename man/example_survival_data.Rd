@@ -7,8 +7,8 @@
 \format{
 A Surv-class object with 200 rows and 2 variables:
 \describe{
-\item{time}{the time until the event took place}
-\item{status}{indicator whether or not the subject was censored. 1 if the event was observed.}
+  \item{time}{the time until the event took place}
+  \item{status}{indicator whether or not the subject was censored. 1 if the event was observed.}
 }
 }
 \usage{

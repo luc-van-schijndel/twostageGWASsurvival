@@ -19,7 +19,7 @@
 #*Document datasets (D)
 #*
 #*It is possible for the second stage batches to be non-ordered returned. Maybe permutate back,
-#*or require the ordered-finishing of processes?
+#*or require the ordered-finishing of processes? (D)
 #*
 #*
 #*Parallel computing (D)
@@ -38,3 +38,24 @@
 #*Update documentation to match standard style: "data type"  "thing it determines in method" (D)
 #*
 #*Check version requirements for Depends packages. Also check if they actually need to be there.
+#*
+#*#Checking the package should take as little CPU time as possible, as the CRAN check farm is a very limited resource and there are thousands of packages. Long-running tests and vignette code can be made optional for checking, but do ensure that the checks that are left do exercise all the features of the package.
+#If running a package uses multiple threads/cores it must never use more than two simultaneously: the check farm is a shared resource and will typically be running many checks simultaneously.
+# vignette niet checken
+
+# examples should run no more than a few seconds each. Batched.twostagecoxph aanpassen. (D)
+
+# check that everything works on other operating systems. R CMD check?
+
+# R CMD check --as-cran ON THE TARBALL to be submitted. with current version of R-devel
+# https://cran.r-project.org/web/packages/policies.html
+
+# add ... to functions to be passed to coxph()
+
+# system.time is unreliable for child processes on non-unix likes. Documentations.
+
+#try Rprof(). See ?utils::Rprof
+
+#Url terug doen in DESCRIPTION : URL: https://github.com/luckylluck2/twostageGWASsurvival
+#                                BugReports: https://github.com/luckylluck2/twostageGWASsurvival/issues
+
