@@ -50,13 +50,15 @@
 # R CMD check --as-cran ON THE TARBALL to be submitted. with current version of R-devel
 # https://cran.r-project.org/web/packages/policies.html
 
-# add ... to functions to be passed to coxph()
+# add ... to functions to be passed to coxph() (D)
 
-# system.time is unreliable for child processes on non-unix likes. Documentations.
+# system.time is unreliable for child processes on non-unix likes. Documentations. (D)
 
 #try Rprof(). See ?utils::Rprof
 
 #Url terug doen in DESCRIPTION : URL: https://github.com/luckylluck2/twostageGWASsurvival
 #                                BugReports: https://github.com/luckylluck2/twostageGWASsurvival/issues
 
-#check temporary files management. Is dit goed gedaan?
+#check temporary files management. Is dit goed gedaan? unlink() files na example?
+
+#un-comment lines of vignette

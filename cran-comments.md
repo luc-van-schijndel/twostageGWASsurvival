@@ -9,3 +9,9 @@ There was 1 NOTE:
   R6 is a build-time dependency.
 
 All code was hand-written by myself, so no credits needs to be given?
+
+
+tests call doParallel::registerDoParallel(2), and the code itself calls foreach::getDoParWorkers(). I assume that the call to getDoParWorkers does not interfere with the parallel testing of multiple packages of CRAN. 
+
+
+In one example, files are made and read using paths obtained from tempfile(). They are not removed after the example ends.

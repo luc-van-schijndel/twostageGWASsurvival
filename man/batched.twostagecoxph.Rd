@@ -23,7 +23,7 @@ batched.twostagecoxph(
 \item{first.stage.threshold}{Numeric scalar denoting the threshold for the first stage. If a covariate
 has a p-value lower than this threshold, it will be passed on to the second stage.}
 
-\item{multiple.hypotheses.correction}{Correction method, a character string. Passed to \code{\link{p.adjust}}}
+\item{multiple.hypotheses.correction}{Correction method, a character string. Passed to \code{\link[stats]{p.adjust}}}
 
 \item{updatefile}{Path to a text file where updates may be written. Necessary for parallel
 computations, since the connection to the terminal will be lost. This
@@ -116,7 +116,7 @@ Parallel processing requires a properly registered parallel back-end, such as on
         Be aware that any progress updates are only rough estimates of the current progress and remaining runtime.
         Since the parallel processes are not inter-connected, the estimates are based on the
         progress itself and therefore highly unreliable if the fraction of processes to workers is
-        relatively low.
+        relatively low, especially on non-Unix like operating systems.
 }
 \examples{
 str(example_survival_data)
@@ -151,6 +151,10 @@ foo <- batched.twostagecoxph(example_survival_data, temp.snpfile.paths,
                              updatefile = updatefile)
 readLines(updatefile)
 print(foo)
+
+#Clean up files from this example
+unlink(temp.snpfile.paths)
+unlink(updatefile)
 }
 \seealso{
 \code{\link{foreach}}, \code{\link{print.twostageGWAS}}, \code{\link{twostagecoxph.control}}

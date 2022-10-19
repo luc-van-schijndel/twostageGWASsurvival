@@ -11,7 +11,7 @@
 #' @param covariate.matrix The nxp-matrix of covariates of the p covariates of the n patients. The dimensions may be named.
 #' @param first.stage.threshold numeric scalar denoting the threshold for the first stage. If a covariate
 #'          is marginally more significant than this threshold, it will be passed on to the second stage.
-#' @param multiple.hypotheses.correction Correction method, a character string. Passed to \code{\link{p.adjust}}.
+#' @param multiple.hypotheses.correction Correction method, a character string. Passed to \code{\link[stats]{p.adjust}}.
 #' @param multicore logical, default FALSE; whether or not the function should use multiple cores
 #'                    in its calculations. See Details.
 #' @param updatefile A \link{connection} to a text file where updates may be written. Necessary for parallel
@@ -82,7 +82,7 @@
 #'         Be aware that in the case of parallel computations, any progress updates are only rough estimates of the current progress and remaining runtime.
 #'         Since the parallel processes are not inter-connected, the estimates are based on the
 #'         progress itself and therefore highly unreliable if the fraction of processes to workers is
-#'         relatively low.
+#'         relatively low, especially on non-Unix like operating systems.
 #'
 #' @seealso \code{\link{foreach}}, \code{\link{print.twostageGWAS}}, \code{\link{twostagecoxph.control}}
 #'

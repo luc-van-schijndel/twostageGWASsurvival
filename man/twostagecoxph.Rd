@@ -23,7 +23,7 @@ twostagecoxph(
 \item{first.stage.threshold}{numeric scalar denoting the threshold for the first stage. If a covariate
 is marginally more significant than this threshold, it will be passed on to the second stage.}
 
-\item{multiple.hypotheses.correction}{Correction method, a character string. Passed to \code{\link{p.adjust}}.}
+\item{multiple.hypotheses.correction}{Correction method, a character string. Passed to \code{\link[stats]{p.adjust}}.}
 
 \item{multicore}{logical, default FALSE; whether or not the function should use multiple cores
 in its calculations. See Details.}
@@ -108,7 +108,7 @@ Parallel processing requires a properly registered parallel back-end, such as on
         Be aware that in the case of parallel computations, any progress updates are only rough estimates of the current progress and remaining runtime.
         Since the parallel processes are not inter-connected, the estimates are based on the
         progress itself and therefore highly unreliable if the fraction of processes to workers is
-        relatively low.
+        relatively low, especially on non-Unix like operating systems.
 }
 \examples{
 survival.dataset <- survival::Surv(c(5,5,3,3,2,2,2,1,1,1),
