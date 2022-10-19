@@ -59,3 +59,4 @@
 #Url terug doen in DESCRIPTION : URL: https://github.com/luckylluck2/twostageGWASsurvival
 #                                BugReports: https://github.com/luckylluck2/twostageGWASsurvival/issues
 
+#check temporary files management. Is dit goed gedaan?

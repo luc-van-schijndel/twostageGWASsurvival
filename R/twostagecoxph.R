@@ -29,7 +29,7 @@
 #'          The main advantage is that only a fraction of the possible interactions is tested,
 #'          resulting in an enourmous decrease in computation times. \cr \cr
 #'          If \code{multicore} is \code{TRUE}, the function assumes a proper parallel back-end is registered,
-#'          e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by \code{foreach} and . \cr \cr
+#'          e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by \code{foreach} and \code{\%dopar\%}. \cr \cr
 #'          If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.
 #'          This function gives the user control in which parts of the set of covariates will
 #'          be in active memory, allowing for better memory management. This does require the
@@ -78,7 +78,7 @@
 #' @export
 #'
 #' @note Parallel processing requires a properly registered parallel back-end, such as one obtained
-#'         from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the  binary operator. \cr \cr
+#'         from \code{doParallel::registerDoParallel(2)} to be used by \code{foreach} and the \code{\%dopar\%} binary operator. \cr \cr
 #'         Be aware that in the case of parallel computations, any progress updates are only rough estimates of the current progress and remaining runtime.
 #'         Since the parallel processes are not inter-connected, the estimates are based on the
 #'         progress itself and therefore highly unreliable if the fraction of processes to workers is
