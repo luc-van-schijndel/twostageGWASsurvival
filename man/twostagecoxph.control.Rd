@@ -27,7 +27,7 @@ about runtime and progress until completion of stages. Set to 0 for no output.}
 
 \item{max.coef}{numeric, default 5; maximum value for all coefficients in the fitted models. If any
 are larger than this (in absolute value), then the model rejected and ignored in
-further analysis.}
+further analysis. Can be used to exclude unrealistically large values.}
 
 \item{max.batchsize}{maximum size of one batch, default 1000; for parallel computing,
 should be lowered if issues arise concerning memory. Can be raised

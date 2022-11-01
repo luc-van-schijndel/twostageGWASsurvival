@@ -3,7 +3,13 @@
 #' A dataset containing the numeric interpretation of 500 SNPs from 200 simulated humans. Both
 #' dimensions have a number-based names attribute.
 #'
-#' @format A matrix with 200 rows and 300 variables with integer values being either 0, 1 or 2.
+#' @format A matrix of 500 rows and 200 columns with integer values being either 0, 1 or 2.
+#'
+#' @examples
+#' if(requireNamespace("LDheatmap", quietly = TRUE)){
+#'    LDheatmap::LDheatmap(cor(example_snp_data), add.map = FALSE, color = heat.colors(20),
+#'                         title = "Correlation structure example_snp_data")
+#' }
 "example_snp_data"
 
 

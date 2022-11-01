@@ -20,7 +20,7 @@ twostagecoxph(
 
 \item{covariate.matrix}{The nxp-matrix of covariates of the p covariates of the n patients. The dimensions may be named.}
 
-\item{first.stage.threshold}{numeric scalar denoting the threshold for the first stage. If a covariate
+\item{first.stage.threshold}{numeric scalar denoting the threshold p-value for the first stage. If a covariate
 is marginally more significant than this threshold, it will be passed on to the second stage.}
 
 \item{multiple.hypotheses.correction}{Correction method, a character string. Passed to \code{\link[stats]{p.adjust}}.}
@@ -28,12 +28,14 @@ is marginally more significant than this threshold, it will be passed on to the 
 \item{multicore}{logical, default FALSE; whether or not the function should use multiple cores
 in its calculations. See Details.}
 
-\item{updatefile}{A \link{connection} to a text file where updates may be written. Necessary for parallel
+\item{updatefile}{A \link{connection} to a text file where updates concerning the execution of the function
+may be written. Necessary for parallel
 computations, since the connection to the terminal will be lost. This
 file will in that case serve as a stand-in for the terminal. Default
-equals a connection to the terminal.}
+equals a connection to the terminal which will be lost when a parallel back-end
+is registered.}
 
-\item{control}{object of class \code{twostagecoxph.control} specifying various options for performance
+\item{control}{object of class \code{\link{twostagecoxph.control}} specifying various options for performance
 of the two stage method.}
 
 \item{...}{other arguments to be passed to all calls to \code{coxph()} in this function.}
@@ -83,10 +85,9 @@ An object of class \code{twostageGWAS}, which is a list of 7 entries:
 \description{
 Performs a two stage analysis to find possible interactions influencing the time to event assuming
 a Cox proportional hazards model. Most useful in cases where the covariates far outnumber the
-subjects, e.g. in a Genome Wide Association Study. The function is based on two stage, wherein
-the first one, all covariates are screened marginally for possible effects. In the second stage,
-pairs of covariates from the ones found to be marginally significant are then tested for an
-interaction effect.
+subjects, e.g. in a Genome Wide Association Study. The function is based on two stages, wherein
+the first one, all covariates are screened marginally for possible effects. Marginally significant covariates
+are passed on to the second stage, where they are tested in pairs for an interaction effect.
 }
 \details{
 It is shown in  that the two stages are independent of eachother. This results in
@@ -94,7 +95,7 @@ It is shown in  that the two stages are independent of eachother. This results i
          The power is also increased compared to a naive method, due to the fact that less
          hypotheses are tested in the second stage resulting in a less strict correction.
          The main advantage is that only a fraction of the possible interactions is tested,
-         resulting in an enourmous decrease in computation times. \cr \cr
+         resulting in an enormous decrease in computation times. \cr \cr
          If \code{multicore} is \code{TRUE}, the function assumes a proper parallel back-end is registered,
          e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by \code{foreach} and \code{\%dopar\%}. \cr \cr
          If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.

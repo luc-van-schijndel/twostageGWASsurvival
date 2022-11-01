@@ -1,20 +1,29 @@
 Package: twostageGWASsurvival
-Title: Implements a Two Stage Method for Detecting Epistasis in GWAS for Survival Data
-Version: 0.2.3.01
+Title: Implement a Two Stage Method for Detecting Epistasis in GWAS for Survival Data
+Version: 0.2.3.04
 Encoding: UTF-8
+Author: Luc van Schijndel [aut, cre],
+    Marianne Jonker [aut]
+Maintainer: Luc van Schijndel, <lcvsch@hotmail.com>
 Authors@R: c(person("Luc", "Schijndel", email = "lcvsch@hotmail.com", role = c("aut", "cre"),
           comment = c(ORCID = "0000-0002-1549-7705")), person("Marianne", "Jonker", email =
           "marianneajonker@gmail.com", role = c("aut"), comment = c(ORCID =
           "0000-0003-0134-8482")))
 Description: Using a two stage method, it is possible to reduce the computational complexity
           of performing a GWAS which aims to detect epistasis between two SNPs. The total
-          computation time is on the scale of months but not on the scale of centuries, as is
+          computation time is on the scale of only days instead of on the scale of centuries, as is
           the case for a naive approach. This package implements a function for applying this
-          method to data obtained in a GWAS. It is recommended to perform this method on a
-          large machine, preferrably with parallel computing options.
+          method to data obtained for example in a GWAS. It is recommended to perform this method on a
+          machine capable of large parallel computations.
 License: GPL (>= 3)
 RoxygenNote: 7.2.1
-Suggests: devtools, doParallel, knitr, rmarkdown, testthat (>= 3.0)
+Suggests: 
+    devtools,
+    doParallel,
+    knitr,
+    LDheatmap,
+    rmarkdown,
+    testthat (>= 3.0)
 Imports: stats, utils, Matrix, survival, foreach
 Depends: R (>= 3.5)
 LazyData: true

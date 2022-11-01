@@ -3,7 +3,7 @@
 #*check which calls to functions are made in double-for loops, and remove :: operators by importFrom-ing (D)
 #*
 #*allow for the option of never having the full covariate matrix loaded in memory. Instead reading
-#*bit by bit from files. (pre-work done)
+#*bit by bit from files. (pre-work done) (D)
 #*
 #*Additional return info (D, I think? No more can be reasonably added?)
 #*
@@ -29,15 +29,15 @@
 #*
 #*Consider removing the corrected spars (D)
 #*
-#*Give print method proper lay-out and structure (and documentation)
+#*Give print method proper lay-out and structure (and documentation) (D)
 #*
-#*Give summary method proper lay-out and structure (and documentation). Display (relevant) top part of matrix
+#*Give summary method proper lay-out and structure (and documentation). Display (relevant) top part of matrix (passed)
 #*
 #*implement ETA returning (D)
 #*
 #*Update documentation to match standard style: "data type"  "thing it determines in method" (D)
 #*
-#*Check version requirements for Depends packages. Also check if they actually need to be there.
+#*Check version requirements for Depends packages. Also check if they actually need to be there. (D? I think?)
 #*
 #*#Checking the package should take as little CPU time as possible, as the CRAN check farm is a very limited resource and there are thousands of packages. Long-running tests and vignette code can be made optional for checking, but do ensure that the checks that are left do exercise all the features of the package.
 #If running a package uses multiple threads/cores it must never use more than two simultaneously: the check farm is a shared resource and will typically be running many checks simultaneously.
@@ -62,3 +62,7 @@
 #check temporary files management. Is dit goed gedaan? unlink() files na example?
 
 #un-comment lines of vignette
+
+#ld-plot in examples (?) en vignette. Packages in Suggests (?)
+
+#tests voor doParallel niet geinstalleerd-checks toevoegen.

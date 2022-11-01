@@ -2,23 +2,24 @@
 #'
 #' Performs a two stage analysis to find possible interactions influencing the time to event assuming
 #' a Cox proportional hazards model. Most useful in cases where the covariates far outnumber the
-#' subjects, e.g. in a Genome Wide Association Study. The function is based on two stage, wherein
-#' the first one, all covariates are screened marginally for possible effects. In the second stage,
-#' pairs of covariates from the ones found to be marginally significant are then tested for an
-#' interaction effect.
+#' subjects, e.g. in a Genome Wide Association Study. The function is based on two stages, wherein
+#' the first one, all covariates are screened marginally for possible effects. Marginally significant covariates
+#' are passed on to the second stage, where they are tested in pairs for an interaction effect.
 #'
 #' @param survival.dataset The survival dataset describing the outcome.
 #' @param covariate.matrix The nxp-matrix of covariates of the p covariates of the n patients. The dimensions may be named.
-#' @param first.stage.threshold numeric scalar denoting the threshold for the first stage. If a covariate
+#' @param first.stage.threshold numeric scalar denoting the threshold p-value for the first stage. If a covariate
 #'          is marginally more significant than this threshold, it will be passed on to the second stage.
 #' @param multiple.hypotheses.correction Correction method, a character string. Passed to \code{\link[stats]{p.adjust}}.
 #' @param multicore logical, default FALSE; whether or not the function should use multiple cores
 #'                    in its calculations. See Details.
-#' @param updatefile A \link{connection} to a text file where updates may be written. Necessary for parallel
+#' @param updatefile A \link{connection} to a text file where updates concerning the execution of the function
+#'                     may be written. Necessary for parallel
 #'                     computations, since the connection to the terminal will be lost. This
 #'                     file will in that case serve as a stand-in for the terminal. Default
-#'                     equals a connection to the terminal.
-#' @param control object of class \code{twostagecoxph.control} specifying various options for performance
+#'                     equals a connection to the terminal which will be lost when a parallel back-end
+#'                     is registered.
+#' @param control object of class \code{\link{twostagecoxph.control}} specifying various options for performance
 #'                  of the two stage method.
 #' @param ... other arguments to be passed to all calls to \code{coxph()} in this function.
 #'
@@ -27,7 +28,7 @@
 #'          The power is also increased compared to a naive method, due to the fact that less
 #'          hypotheses are tested in the second stage resulting in a less strict correction.
 #'          The main advantage is that only a fraction of the possible interactions is tested,
-#'          resulting in an enourmous decrease in computation times. \cr \cr
+#'          resulting in an enormous decrease in computation times. \cr \cr
 #'          If \code{multicore} is \code{TRUE}, the function assumes a proper parallel back-end is registered,
 #'          e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by \code{foreach} and \code{\%dopar\%}. \cr \cr
 #'          If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.
@@ -184,6 +185,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   }
 
   if(multicore != FALSE){
+    if(!requireNamespace("doParallel")) stop("doParallel package is required for multicore functionality to operate. \nAttach that package or set parameter multicore = FALSE")
     ts.output <-
       multicore.twostagecoxph(
         survival.dataset = survival.dataset,
@@ -316,7 +318,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 #'                   about runtime and progress until completion of stages. Set to 0 for no output.
 #' @param max.coef numeric, default 5; maximum value for all coefficients in the fitted models. If any
 #'                   are larger than this (in absolute value), then the model rejected and ignored in
-#'                   further analysis.
+#'                   further analysis. Can be used to exclude unrealistically large values.
 #' @param upper.bound.correlation numeric scalar in the interval (0,1), default 0.9; the upper bound on the correlation between two
 #'                                  covariates. If exceeded (in absolute value), the model
 #'                                  is not fitted.
@@ -867,16 +869,16 @@ clear.current.line <- function(updatefile = ""){
   utils::flush.console()
 }
 
-#' Print method for twostageGWAS objects
+#' Print a twostageGWAS object
 #'
 #' @usage \method{print}{twostageGWAS}(x, \ldots)
 #' @param x object of class \code{twostageGWAS}
 #' @param ... optional arguments passed on to \code{cat} and \code{print.default} functions.
 #'
-#' @details prints a brief overview of the most relevant results (max 5) concluded from the two stage analysis.
-#'            Includes the original call, the number of covariates deemed significant by the
+#' @details Prints a brief overview of the most relevant results (max 5) concluded from the two stage analysis.
+#'            Includes the original call, the number of covariates deemed statistically significant in the
 #'            first stage and how many tests will be performed in the second stage.
-#'            The last table shows the best results, ordered from lowest p-value to highest.
+#'            The last table shows the most significant results, ordered from lowest p-value to highest.
 #'            The name of the interaction is given in the form \code{name_cov_1 x name_cov_2} along
 #'            with the corresponding p-value and possible duplicates. The duplicates are interactions
 #'            with the same resulting p-value up to 7 significant digits.

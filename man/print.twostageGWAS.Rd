@@ -2,7 +2,7 @@
 % Please edit documentation in R/twostagecoxph.R
 \name{print.twostageGWAS}
 \alias{print.twostageGWAS}
-\title{Print method for twostageGWAS objects}
+\title{Print a twostageGWAS object}
 \usage{
 \method{print}{twostageGWAS}(x, \ldots)
 }
@@ -15,13 +15,13 @@
 The \code{twostageGWAS} object invisibly
 }
 \description{
-Print method for twostageGWAS objects
+Print a twostageGWAS object
 }
 \details{
-prints a brief overview of the most relevant results (max 5) concluded from the two stage analysis.
-           Includes the original call, the number of covariates deemed significant by the
+Prints a brief overview of the most relevant results (max 5) concluded from the two stage analysis.
+           Includes the original call, the number of covariates deemed statistically significant in the
            first stage and how many tests will be performed in the second stage.
-           The last table shows the best results, ordered from lowest p-value to highest.
+           The last table shows the most significant results, ordered from lowest p-value to highest.
            The name of the interaction is given in the form \code{name_cov_1 x name_cov_2} along
            with the corresponding p-value and possible duplicates. The duplicates are interactions
            with the same resulting p-value up to 7 significant digits.

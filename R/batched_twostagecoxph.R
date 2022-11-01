@@ -8,11 +8,13 @@
 #' @param covariate.filepaths The vector of paths of the files containing the covariates. See Details.
 #' @param first.stage.threshold Numeric scalar denoting the threshold for the first stage. If a covariate
 #'          has a p-value lower than this threshold, it will be passed on to the second stage.
-#' @param multiple.hypotheses.correction Correction method, a character string. Passed to \code{\link[stats]{p.adjust}}
+#' @param multiple.hypotheses.correction Correction method, a character string. Passed to \code{\link[stats]{p.adjust}}.
+#'                                    Possible methods are given by \code{\link[stats]{p.adjust.methods}}.
 #' @param updatefile Path to a text file where updates may be written. Necessary for parallel
 #'                     computations, since the connection to the terminal will be lost. This
-#'                     file will in that case serve as a stand-in for the terminal.
-#' @param control Object of class \code{twostagecoxph.control} specifying various options for performance
+#'                     file will in that case serve as a stand-in for the terminal. The default equals a
+#'                     connection to the terminal which is lost when a parallel back-end is registered.
+#' @param control Object of class \code{\link{twostagecoxph.control}} specifying various options for performance
 #'                  of the two stage method.
 #' @param number.of.covariates The combined total of covariates found in the files specified.
 #'                               If left unspecified, the function will automatically determine this
@@ -22,18 +24,18 @@
 #'                        By default, this is \code{function(x) as.matrix(utils::read.table(x))}. Note that
 #'                        the first argument of the function will be used to pass the filepaths. See Details.
 #'
-#' @details   At all times on all registered cores, the contents of at most 2 files will be in memory.
-#'            Take note however, that the results will be written to a matrix of substantial size
+#' @details   At all times on all registered cores, the contents of at most 2 files specified by \code{covariate.filepaths}
+#'  will be in memory. Take note however, that the results will be written to a matrix of substantial size
 #'            (\code{covariates_per_file x total_number_of_covariates}) so it is best if enough memory
 #'            is still available after reading the files. \cr \cr
 #'            The function assumes that the object returned by \code{read.function} is a matrix containing
 #'            the covariates with one column per covariate and one row per subject This assumption
 #'            will only be checked once at function start. If the files are not structured the
 #'            same, the results may be unreliable or an error may be thrown. If the \code{read.function}
-#'            assignes dimnames to the columns, these names will be kept and passed on to the resulting
+#'            assigns names to the columns via the \code{dimnames} attribute, these names will be kept and passed on to the resulting
 #'            object. If not, the indices of the covariates (counting across all files) will be used as
 #'            the names. \cr \cr
-#'            The function assumes the files have same number of covariates, except for the last one,
+#'            The function assumes that the files have the same number of covariates, except for the last one,
 #'            which may have less. \code{number.of.covariates}
 #'            will be divided by the amount of covariates per file, and the remainder of that division
 #'            \emph{must} be the number of covariates in the last file.
@@ -42,7 +44,7 @@
 #'   \item{result.list}{A list containing the results and where to find them in either 5 or 7 entries, depending on
 #'   whether or not the covariates are named in the files:
 #'   \describe{
-#'     \item{\code{p.values}}{the non-trivial p-values of the interactions. The list is sorted in ascending
+#'     \item{\code{p.values}}{the p-values of the interactions not equal to 1. The list is sorted in ascending
 #'     order by this value. Any p-values that are either NA, 0, or 1 after possibly applying the
 #'     multiple hypotheses correction will not be present in this vector.}
 #'     \item{\code{batch.one}, \code{index.one}, \code{batch.two}, \code{index.two}}{
@@ -187,7 +189,11 @@ batched.twostagecoxph <- function(survival.dataset, covariate.filepaths, first.s
     number.of.covariates <- max(ceiling(number.of.covariates), 0, na.rm = TRUE)
   }
 
+  if(!requireNamespace("doParallel")) stop("doParallel package is required for this function to operate. \nUse twostagecoxph(., multicore = FALSE) instead.")
+
   if(progress == 0) progress = FALSE
+
+
 
   this.call <- match.call()
 
