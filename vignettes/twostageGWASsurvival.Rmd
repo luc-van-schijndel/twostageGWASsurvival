@@ -80,15 +80,15 @@ As we can see, in this synthetic GWAS, we had 200 subjects of which we documente
   
 ```{r analysing toy GWAS in parallel}
 doParallel::registerDoParallel(2)
-#result <- twostagecoxph(example_survival_data, example_snp_data, multicore = TRUE,
-#                        control = twostagecoxph.control(progress = 0))
-#print(result)
+result <- twostagecoxph(example_survival_data, example_snp_data, multicore = TRUE,
+                        control = twostagecoxph.control(progress = 0))
+print(result)
 ```
 
 As we can see, we have some significant results. Three pairs of covariates have a corresponding p-value that is lower than 0.05, so at this level of significance we find a significant interaction. Moreover, some other pairs have the same (significant) p-values as other pairs. All of these are listed in the \code{result} object:
   
 ```{r some results may be similar}
-#result$most.significant.results$duplicate.interactions
+result$most.significant.results$duplicate.interactions
 ```
 
 This means that the interaction of these pairs are so similar to the interactions displayed in \code{result}, that the p-values differ too little. These are therefore reported in a separate part of the object.
@@ -124,9 +124,9 @@ As we can see, it is possible for the last file to have less covariates than the
 The result from the function using batches is then the same as the one using the basic function:
   
 ```{r analyse multiple files}
-#print(batched.result <- 
-#        batched.twostagecoxph(example_survival_data, temp.snpfile.paths,
-#                              number.of.covariates = number.of.covs))
+print(batched.result <- 
+        batched.twostagecoxph(example_survival_data, temp.snpfile.paths,
+                              number.of.covariates = number.of.covs))
 ```
 
 Note that we must provide the paths to the files in a vector, and that we let the function know how many covariates can be found in all files combined. The function does allow that to be done automatically, but this requires it to read through all files individually, which costs time. The user probably know this, so it is best if it is provided. Also note that this function performs its operations in parallel, just like the previous example with \code{multicore = TRUE}.

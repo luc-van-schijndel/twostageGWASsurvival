@@ -15,3 +15,5 @@
 ^man/optimal\.batch\.configuration\.Rd$
 ^\.git$
 ^\.gitignore$
+^doc$
+^Meta$

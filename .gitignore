@@ -5,3 +5,5 @@
 .DS_Store
 R/to_ask_mar.R
 inst/doc
+/doc/
+/Meta/
