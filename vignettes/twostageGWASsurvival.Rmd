@@ -21,7 +21,7 @@ Since the package is not yet available on CRAN, installation goes as follows:
   
 
 ```{r setup}
-invisible(devtools::install_github("luckylluck2/twostageGWASsurvival"))
+invisible(devtools::install_github("luc-van-schijndel/twostageGWASsurvival"))
 library(twostageGWASsurvival)
 ```
 
