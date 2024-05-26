@@ -30,7 +30,7 @@
 #'          The main advantage is that only a fraction of the possible interactions is tested,
 #'          resulting in an enormous decrease in computation times. \cr \cr
 #'          If \code{multicore} is \code{TRUE}, the function assumes a proper parallel back-end is registered,
-#'          e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by \code{foreach} and \code{\%dopar\%}. \cr \cr
+#'          e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by the \code{foreach} package & functions and \code{\%dopar\%}. \cr \cr
 #'          If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.
 #'          This function gives the user control in which parts of the set of covariates will
 #'          be in active memory, allowing for better memory management. This does require the
@@ -40,14 +40,14 @@
 #'   \item{result.list}{A list containing the results and where to find them in either 3 or 5 entries, depending on
 #'   whether or not the covariates are named in the files:
 #'   \describe{
-#'     \item{\code{p.values}}{the non-trivial p-values of the interactions. The list is sorted in ascending
+#'     \item{\code{p.values}}{The non-trivial p-values of the interactions. The list is sorted in ascending
 #'     order by this value. Any p-values that are either NA, 0, or 1 after possibly applying the
 #'     multiple hypotheses correction will not be present in this vector.}
 #'     \item{\code{index.one}, \code{index.two}}{the indices describing the two covariates that
 #'     describe the interaction corresponding to the p-values in the previous entry. }
 #'     \item{\code{names.one}, \code{names.two}}{if the covariates are named, these are the names
 #'     of the covariates found on the aforementioned indices.}
-#'   }}
+#'   }\cr }
 #'   \item{most.significant.results}{A list describing the most significant results found. The
 #'   number of results reported is specified by the control parameter, default 5. The
 #'   list contains 3 items:
@@ -61,14 +61,14 @@
 #'     \item{\code{duplicate.interactions}}{the list of duplicate interactions found, corresponding to
 #'     the interactions specified in this list. An interaction is said to be duplicate if the corresponding
 #'     p-value is the same up until 7 significant figures. }
-#'   }}
+#'   }\cr }
 #'   \item{p.value.matrix}{A \code{sparseMatrix} object from the package \code{Matrix}, specifying the resulting
 #'   upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
 #'     is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
 #'     tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
-#'     of the dimensions of the matrix match the ones specified in the files, if the \code{read.function} assigns
+#'     of the dimensions of the matrix match the ones specified in the files, if the \code{read.function} applied to those files assigns
 #'     dimnames to the matrix. The row and columns corresponding to covariates that were not named in the input
-#'     matrix, have the string \code{as.character(NA)} for names (Note: not NA itself).}
+#'     matrix, have the string \code{as.character(NA)} for names (Note: not \code{NA} itself).}
 #'   \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
 #'   were found to be marginally significant in the first stage. }
 #'   \item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
@@ -120,6 +120,8 @@
 #'
 #' # As we can see, foo and bar have different results. A lower FST generally gives more power, but it
 #' # it risks the possibility to be too strict and consequently *decreasing* power.
+
+
 twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold = 0.05,
                           multiple.hypotheses.correction = "bonferroni", multicore = FALSE,
                           updatefile = "", control = twostagecoxph.control(), ...){
@@ -168,6 +170,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 
   snps.are.named = !is.null(dimnames(covariate.matrix)[[2]])
 
+  #now that we did all the pre-call stuff, we can start the two stage process, either sequentially:
   start.time <- proc.time()[3]
   if(multicore == FALSE){
     ts.output <-
@@ -184,6 +187,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
       )
   }
 
+  # or parallel: (whichever was demanded)
   if(multicore != FALSE){
     if(!requireNamespace("doParallel")) stop("doParallel package is required for multicore functionality to operate. \nAttach that package or set parameter multicore = FALSE")
     ts.output <-
@@ -201,6 +205,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
       )
   }
 
+  #if we get a trivial output, with no relevant results, we return an object that allows the user to find out why it was trivial:
   if(length(ts.output$passed.indices) < 2 || length(ts.output$second.stage.sparse.matrix@x) < 1){
     total.runtime <- proc.time()[3] - start.time
     names(total.runtime) = c("seconds")
@@ -218,13 +223,16 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
     return(return.object)
   }
 
+  # if we have relevant results, and multiple hyp.corr. was required, we do so:
   if(!return.raw){
     ts.output$second.stage.sparse.matrix@x <- stats::p.adjust(ts.output$second.stage.sparse.matrix@x, method = multiple.hypotheses.correction)
   }
 
+  # Now we create the most.siginificant.results entry for the output:
   unique.p.values <- unique(ts.output$second.stage.sparse.matrix@x)
   report.lowest.amount = min(report.lowest.amount, sum(unique.p.values < 1, na.rm = TRUE))
   if(report.lowest.amount > 0){
+    #the following variable says 'fifth', but it can by any amount, five is just the default
     fifth.lowest.unique <- stats::quantile(unique.p.values,
                                     probs = report.lowest.amount/sum(!is.na(unique.p.values)),
                                     na.rm = TRUE)
@@ -265,7 +273,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
                              duplicate.interactions = duplicate.list)
   } else lowest.five.list = list()
 
-  # We fill a list with the non-trivial results, along with corresponding index and (if availible) names
+  # We fill a list with the non-trivial results, along with corresponding index and (if available) names
   result.indices <- Matrix::which(ts.output$second.stage.sparse.matrix > 0 &
                                     ts.output$second.stage.sparse.matrix < 1 &
                                     !is.na(ts.output$second.stage.sparse.matrix), arr.ind = TRUE)
