@@ -45,14 +45,14 @@ An object of class \code{twostageGWAS}, which is a list of 7 entries:
   \item{result.list}{A list containing the results and where to find them in either 3 or 5 entries, depending on
   whether or not the covariates are named in the files:
   \describe{
-    \item{\code{p.values}}{the non-trivial p-values of the interactions. The list is sorted in ascending
+    \item{\code{p.values}}{The non-trivial p-values of the interactions. The list is sorted in ascending
     order by this value. Any p-values that are either NA, 0, or 1 after possibly applying the
     multiple hypotheses correction will not be present in this vector.}
     \item{\code{index.one}, \code{index.two}}{the indices describing the two covariates that
     describe the interaction corresponding to the p-values in the previous entry. }
     \item{\code{names.one}, \code{names.two}}{if the covariates are named, these are the names
     of the covariates found on the aforementioned indices.}
-  }}
+  }\cr }
   \item{most.significant.results}{A list describing the most significant results found. The
   number of results reported is specified by the control parameter, default 5. The
   list contains 3 items:
@@ -66,14 +66,14 @@ An object of class \code{twostageGWAS}, which is a list of 7 entries:
     \item{\code{duplicate.interactions}}{the list of duplicate interactions found, corresponding to
     the interactions specified in this list. An interaction is said to be duplicate if the corresponding
     p-value is the same up until 7 significant figures. }
-  }}
+  }\cr }
   \item{p.value.matrix}{A \code{sparseMatrix} object from the package \code{Matrix}, specifying the resulting
   upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
     is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
     tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
-    of the dimensions of the matrix match the ones specified in the files, if the \code{read.function} assigns
+    of the dimensions of the matrix match the ones specified in the files, if the \code{read.function} applied to those files assigns
     dimnames to the matrix. The row and columns corresponding to covariates that were not named in the input
-    matrix, have the string \code{as.character(NA)} for names (Note: not NA itself).}
+    matrix, have the string \code{as.character(NA)} for names (Note: not \code{NA} itself).}
   \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
   were found to be marginally significant in the first stage. }
   \item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
@@ -97,7 +97,7 @@ It is shown in  that the two stages are independent of eachother. This results i
          The main advantage is that only a fraction of the possible interactions is tested,
          resulting in an enormous decrease in computation times. \cr \cr
          If \code{multicore} is \code{TRUE}, the function assumes a proper parallel back-end is registered,
-         e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by \code{foreach} and \code{\%dopar\%}. \cr \cr
+         e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by the \code{foreach} package & functions and \code{\%dopar\%}. \cr \cr
          If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.
          This function gives the user control in which parts of the set of covariates will
          be in active memory, allowing for better memory management. This does require the
