@@ -139,6 +139,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   lower.bound.variance = control$lower.bound.variance
   upper.bound.correlation = control$upper.bound.correlation
 
+  # If you're debugging, you can uncomment this:
   # first.stage.threshold = 0.05; multiple.hypotheses.correction = "bonferroni"; multicore = FALSE; report.lowest.amount = 5; return.raw = FALSE; progress = 0; max.coef = 5; max.batchsize = 1000; updatefile = ""; upper.bound.correlation = 0.95
   if(!survival::is.Surv(survival.dataset)) stop("survival.dataset must be a Surv object")
   if(!is.matrix(covariate.matrix)) stop("covariate.matrix must be a (strict) matrix")
@@ -156,6 +157,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   if(first.stage.threshold > 1 || first.stage.threshold < 0) stop("first.stage.threshold must be in the interval [0,1]")
   if(first.stage.threshold == 1) stop("first.stage.threshold is 1, consider decreasing this. The two stage method is not suitable for this.")
   if(first.stage.threshold == 0){
+    # we do a bit of meming
     if(stats::runif(1) < 0.5) {
       stop("first.stage.threshold is 0, consider increasing this. The two stage method is not suitable for this. \n     'None Shall Pass!' - The Black Knight (Monty Python and the Holy Grail)")
     } else
@@ -163,23 +165,13 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   }
 
 
-  if(abs(report.lowest.amount - round(report.lowest.amount)) > .Machine$double.eps^0.5 || report.lowest.amount < 1){
-    warning("report.lowest.amount must be non-negative integer. Rounding up to non-negative integer")
-    report.lowest.amount <- max(ceiling(report.lowest.amount), 1, na.rm = TRUE)
-  }
-
-  if(max.batchsize < 2) stop("max.batchsize must be 2 or greater.")
-
-
-  if(progress == 0) progress = FALSE
-
   this.call <- match.call()
 
   snps.are.named = !is.null(dimnames(covariate.matrix)[[2]])
 
   #now that we did all the pre-call stuff, we can start the two stage process, either sequentially:
   start.time <- proc.time()[3]
-  if(multicore == FALSE){
+  if(!multicore){
     ts.output <-
       singlecore.twostagecoxph(
         survival.dataset = survival.dataset,
@@ -187,16 +179,16 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
         first.stage.threshold = first.stage.threshold,
         progress = progress,
         max.coef = max.coef,
+        lower.bound.variance = lower.bound.variance,
         upper.bound.correlation = upper.bound.correlation,
         snps.are.named = snps.are.named,
         updatefile = updatefile,
-        lower.bound.variance = lower.bound.variance,
         ...
       )
   }
 
   # or parallel: (whichever was demanded)
-  if(multicore != FALSE){
+  if(multicore){
     if(!requireNamespace("doParallel")) stop("doParallel package is required for multicore functionality to operate. \nAttach that package or set parameter multicore = FALSE")
     ts.output <-
       multicore.twostagecoxph(
@@ -206,10 +198,10 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
         progress = progress,
         max.coef = max.coef,
         max.batchsize = max.batchsize,
-        updatefile = updatefile,
+        lower.bound.variance = lower.bound.variance,
         upper.bound.correlation = upper.bound.correlation,
         snps.are.named = snps.are.named,
-        lower.bound.variance = lower.bound.variance,
+        updatefile = updatefile,
         ...
       )
   }
@@ -355,16 +347,16 @@ twostagecoxph.control <- function(report.lowest.amount = 5, return.raw = FALSE, 
      (trunc(report.lowest.amount) != report.lowest.amount)[1] ||
      (length(report.lowest.amount) != 1) ||
      (report.lowest.amount <= 0)
-     ) stop("report.lowest.amount must be a non-negative integer scalar")
+     ) stop("report.lowest.amount must be a strictly positive integer scalar")
   if(!is.numeric(progress) ||
      (trunc(progress) != progress)[1] ||
      length(progress) != 1 ||
-     (progress <= 0)
+     (progress < 0)
      ) stop("progress must be a non-negative integer scalar")
   if(!is.numeric(max.coef) ||
      length(max.coef) != 1 ||
      (max.coef <= 0)
-     ) stop("max.coef must be a non-negative double scalar")
+     ) stop("max.coef must be a strictly positive double scalar")
   if(!is.numeric(max.batchsize) ||
      (trunc(max.batchsize) != max.batchsize)[1] ||
      length(max.batchsize) != 1
