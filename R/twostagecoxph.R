@@ -125,11 +125,18 @@
 twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold = 0.05,
                           multiple.hypotheses.correction = "bonferroni", multicore = FALSE,
                           updatefile = "", control = twostagecoxph.control(), ...){
+
+  # A note for code-readers:
+  # The functions called all have reasonable defaults for the parameters that make sense. This is to allow for easier debugging,
+  # but all the parameters **should** be passed to each function call (and ... whenever the function leads to a survival::coxph() call)
+  # and therefore no defaults should be used outside of debugging. The exception of course are the user-facing functions.
+
   report.lowest.amount = control$report.lowest.amount
   return.raw = control$return.raw
   progress = control$progress
   max.coef = control$max.coef
   max.batchsize = control$max.batchsize
+  lower.bound.variance = control$lower.bound.variance
   upper.bound.correlation = control$upper.bound.correlation
 
   # first.stage.threshold = 0.05; multiple.hypotheses.correction = "bonferroni"; multicore = FALSE; report.lowest.amount = 5; return.raw = FALSE; progress = 0; max.coef = 5; max.batchsize = 1000; updatefile = ""; upper.bound.correlation = 0.95
@@ -183,6 +190,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
         upper.bound.correlation = upper.bound.correlation,
         snps.are.named = snps.are.named,
         updatefile = updatefile,
+        lower.bound.variance = lower.bound.variance,
         ...
       )
   }
@@ -201,6 +209,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
         updatefile = updatefile,
         upper.bound.correlation = upper.bound.correlation,
         snps.are.named = snps.are.named,
+        lower.bound.variance = lower.bound.variance,
         ...
       )
   }
@@ -319,71 +328,90 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 #' @param report.lowest.amount integer, default 5; denotes how many of the most significant interactions
 #'                               the function should report. Altering this value does
 #'                               not affect the maximum amount reported by the \code{print.twostageGWAS} function.
-#'                               That value is always capped at 5. A lower value does affect the print function.
 #' @param return.raw logical, default FALSE; whether or not the output should contain the raw p-values or
 #'                     the multiple hypotheses corrected p-values.
 #' @param progress numeric, default 1000;  how many iterations should pass silently until an update is given
 #'                   about runtime and progress until completion of stages. Set to 0 for no output.
 #' @param max.coef numeric, default 5; maximum value for all coefficients in the fitted models. If any
-#'                   are larger than this (in absolute value), then the model rejected and ignored in
+#'                   are larger than this (in absolute value), then the model rejects them and ignored in
 #'                   further analysis. Can be used to exclude unrealistically large values.
-#' @param upper.bound.correlation numeric scalar in the interval (0,1), default 0.9; the upper bound on the correlation between two
-#'                                  covariates. If exceeded (in absolute value), the model
-#'                                  is not fitted.
 #' @param max.batchsize maximum size of one batch, default 1000; for parallel computing,
 #'                        should be lowered if issues arise concerning memory. Can be raised
 #'                        to slightly increase performance
+#' @param lower.bound.variance numeric scalar in the interval \code{[0,1)}, default 0.1; the lower bound on the variance of a covariate
+#'                              in the first stage. If the variance is lower, the model using this covariate is not fitted and the covariate is
+#'                              rejected by default.
+#' @param upper.bound.correlation numeric scalar in the interval \code{(0,1]}, default 0.9; the upper bound on the correlation between two
+#'                                  covariates and their interaction. If exceeded (in absolute value), the model using these two correlated variables
+#'                                  is not fitted and the interaction between these is rejected by default.
 #'
 #' @return a list containing the values of each of the above constants.
 #' @export
 #'
 twostagecoxph.control <- function(report.lowest.amount = 5, return.raw = FALSE, progress = 1000,
-                                  max.coef = 5, max.batchsize = 1000, upper.bound.correlation = 0.9){
-  if((!is.numeric(report.lowest.amount)) ||
+                                  max.coef = 5, max.batchsize = 1000, lower.bound.variance = 0.1,
+                                  upper.bound.correlation = 0.9){
+  if(!is.numeric(report.lowest.amount) ||
      (trunc(report.lowest.amount) != report.lowest.amount)[1] ||
-     (length(report.lowest.amount) != 1)) stop("report.lowest.amount must be an integer scalar")
+     (length(report.lowest.amount) != 1) ||
+     (report.lowest.amount <= 0)
+     ) stop("report.lowest.amount must be a non-negative integer scalar")
   if(!is.numeric(progress) ||
      (trunc(progress) != progress)[1] ||
-     length(progress) != 1) stop("progress must be an integer scalar")
+     length(progress) != 1 ||
+     (progress <= 0)
+     ) stop("progress must be a non-negative integer scalar")
   if(!is.numeric(max.coef) ||
-     (trunc(max.coef) != max.coef)[1] ||
-     length(max.coef) != 1) stop("max.coef must be an integer scalar")
+     length(max.coef) != 1 ||
+     (max.coef <= 0)
+     ) stop("max.coef must be a non-negative double scalar")
   if(!is.numeric(max.batchsize) ||
      (trunc(max.batchsize) != max.batchsize)[1] ||
-     length(max.batchsize) != 1) stop("max.batchsize must be an integer scalar")
-  if(!is.numeric(upper.bound.correlation) ||
-     (upper.bound.correlation[1] < 0 || upper.bound.correlation[1] > 1) ||
-     length(upper.bound.correlation) != 1) stop("upper.bound.correlation must be an double scalar in the interval [0,1]")
-  if(!is.logical(return.raw) || length(return.raw) != 1) stop("return.raw must be a logical scalar")
+     length(max.batchsize) != 1
+     ) stop("max.batchsize must be an integer scalar")
   if(max.batchsize < 2) stop("max.batchsize must be 2 or greater")
+  if(!is.numeric(lower.bound.variance) ||
+     (lower.bound.variance[1] < 0 || lower.bound.variance[1] => 1) ||
+     length(lower.bound.variance) != 1
+  ) stop("lower.bound.variance must be an double scalar in the interval [0,1)")
+  if(!is.numeric(upper.bound.correlation) ||
+     (upper.bound.correlation[1] <= 0 || upper.bound.correlation[1] > 1) ||
+     length(upper.bound.correlation) != 1
+     ) stop("upper.bound.correlation must be an double scalar in the interval (0,1]")
+  if(!is.logical(return.raw) ||
+     length(return.raw) != 1
+     ) stop("return.raw must be a logical scalar")
 
   return(list(report.lowest.amount = report.lowest.amount, return.raw = return.raw, progress = progress,
-              max.coef = max.coef, max.batchsize = max.batchsize, upper.bound.correlation = upper.bound.correlation))
+              max.coef = max.coef, max.batchsize = max.batchsize, lower.bound.variance = lower.bound.variance,
+              upper.bound.correlation = upper.bound.correlation))
 }
 
-prefitting.check.one <- function(covariate) {
-  passed <- TRUE
-  if (stats::var(covariate, na.rm = TRUE) < 0.1)
-    passed <- FALSE
-  return(passed)
+# Check that the covariate is sufficiently enough non-constant i.e. variance. Return TRUE if this suffices
+prefitting.check.one <- function(covariate, lower.bound.variance) {
+  return(
+    stats::var(covariate, na.rm = TRUE) >= lower.bound.variance
+  )
 }
 
+# Check that the correlation between the two covariates, nor the correlation between the covs and the interaction is not too large.
+# Return TRUE if it suffices
 prefitting.check.two <- function(covariate.one, covariate.two, upper.bound.correlation) {
-  passed <- TRUE
-  if (max(stats::cor(matrix(
-    c(covariate.one, covariate.two, covariate.one * covariate.two),
-    ncol = 3
-  ))[upper.tri(matrix(0, 3, 3))],
-  na.rm = TRUE) > upper.bound.correlation)
-    passed <- FALSE
-  return(passed)
+  return(
+    max(stats::cor(matrix(
+      c(covariate.one, covariate.two, covariate.one * covariate.two),
+      ncol = 3
+    ))[upper.tri(matrix(0, 3, 3))],
+    na.rm = TRUE)
+    <= upper.bound.correlation
+  )
 }
 
-convergence.check <- function(coxph.model, max.coef = 5){
-  converged <- TRUE
-  if(max(abs(coxph.model$coefficients), na.rm = TRUE) > max.coef) converged <- FALSE
-  if(coxph.model$iter >= 20) FALSE
-  return(converged)
+# Check if none of the coefficients are not too large. Return TRUE if it suffices
+convergence.check <- function(coxph.model, max.coef){
+  if(coxph.model$iter >= 20) return(FALSE)
+  if(max(abs(coxph.model$coefficients), na.rm = TRUE) > max.coef) return(FALSE)
+  return(TRUE)
 }
 
 
@@ -408,7 +436,7 @@ optimal.batch.configuration <- function(no.covariates, max.batchsize, no.workers
 
 singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
                                      progress = 50, max.coef = 5, upper.bound.correlation = 0.95, snps.are.named = FALSE,
-                                     updatefile = "", ...){
+                                     updatefile = "", lower.bound.variance = 0.1, ...){
   first.stage.result <-
     firststagecoxph(
       survival.dataset,
@@ -417,6 +445,7 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
       max.coef,
       snps.are.named = snps.are.named,
       updatefile = updatefile,
+      lower.bound.variance = lower.bound.variance,
       ...
     )
   if(snps.are.named) {
@@ -513,7 +542,8 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
 
 multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
                                      progress = 50, max.coef = 5, updatefile = "", max.batchsize = 1000,
-                                    upper.bound.correlation = 0.95, snps.are.named = FALSE, ...){
+                                    upper.bound.correlation = 0.95, snps.are.named = FALSE,
+                                    lower.bound.variance = 0.1, ...){
   first.stage.list <-
     firststagecoxph.multicore(
       survival.dataset = survival.dataset,
@@ -523,6 +553,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
       max.batchsize = max.batchsize,
       updatefile = updatefile,
       snps.are.named = snps.are.named,
+      lower.bound.variance = lower.bound.variance,
       ...
     )
 
@@ -730,12 +761,12 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
 
 
 firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, max.coef = 5,
-                            snps.are.named = FALSE, updatefile = updatefile, ...){
+                            snps.are.named = FALSE, updatefile = updatefile, lower.bound.variance = 0.1, ...){
   start.time.first.stage <- proc.time()[3]
   p.value.vector <- rep(NA, length = dim(covariate.matrix)[2])
   for(covariate.index in 1:length(p.value.vector)){
     this.covariate <- covariate.matrix[, covariate.index]
-    if(prefitting.check.one(this.covariate)){
+    if(prefitting.check.one(this.covariate, lower.bound.variance)){
       withCallingHandlers(
         fitted.model <-
           coxph(survival.dataset ~ this.covariate, ...),
@@ -785,7 +816,7 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
 
 firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progress = 50,
                                       max.coef = 5, max.batchsize = 1000, updatefile = "",
-                                      snps.are.named = FALSE, ...){
+                                      snps.are.named = FALSE, lower.bound.variance = 0.1, ...){
   start.time.first.stage <- proc.time()[3]
 
   no.covariates <- dim(covariate.matrix)[2]
@@ -816,7 +847,7 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
     this.process.p.values <- rep(NA, length(this.process.indices))
     for(covariate.index in 1:length(this.process.indices)){
       this.covariate <- covariate.matrix[, this.process.indices[covariate.index]]
-      if(prefitting.check.one(this.covariate)){
+      if(prefitting.check.one(this.covariate, lower.bound.variance)){
         withCallingHandlers(
           fitted.model <-
             coxph(survival.dataset ~ this.covariate, ...),
