@@ -407,24 +407,37 @@ convergence.check <- function(coxph.model, max.coef){
 }
 
 
+
+# This one is interesting, it aims to calculate an optimal number of batches to divide over the workers.
+# The primary goal is to minimize the maximum number of covariates in one batch in one worker, by providing an equal spread.
+# Think of it as a box, with 3 dimensions: no.workers and no.iterations at the base and the batchsize as height. We want
+# to minimize the iterations first, then the batchsize, and finally provide an equal spread.
+# Returns a list, containing the optimal.batchsize, the optimal.no.batches and last.batchsizes, which is an array of length no.workers of integers denoting
+# the number of covariates in the batches of the last iteration.
 optimal.batch.configuration <- function(no.covariates, max.batchsize, no.workers = 1){
-  intermediate.no.batches <- min(ceiling(no.covariates/no.workers), max.batchsize)
-  intermediate.batchsize <- ceiling(no.covariates/intermediate.no.batches)
-  final.iters <- ceiling(intermediate.batchsize/no.workers)
-  final.no.batches <- final.iters*no.workers
-  final.batchsize <- ceiling(no.covariates/final.no.batches)
 
-  last.iter.covs <- no.covariates - final.batchsize*(final.iters-1)*no.workers
-  last.batchsize <- ceiling(last.iter.covs/no.workers)
-  last.no.full.batches <- ceiling(last.iter.covs/last.batchsize - 1)
-  last.partial.batch <- last.iter.covs - last.batchsize*last.no.full.batches
-  last.batchsizes <- c(rep(last.batchsize, last.no.full.batches), last.partial.batch)
-  #add trailing 0's
-  last.batchsizes <- c(last.batchsizes, rep(0, no.workers - length(last.batchsizes)))
+  # Firstly, we calculate the least required iterations:
+  least.req.iterations = ceiling( no.covariates / (max.batchsize * no.workers) )
+  # Next we aim to minimize the maximum batchsize. To do so, we calculate the
+  # lowest batchsize that would suffice:
+  minmax.batchsize = ceiling(no.covariates / (no.workers * least.req.iterations))
 
-  return(list(optimal.batchsize = final.batchsize, optimal.no.batches = final.no.batches,
-              last.batchsizes = last.batchsizes))
+  # Lastly, we need to distribute the remaining covariates over the batches in the last iteration. This is the hardest part.
+  # First, how many remaining covariates:
+  no.remaining.covs = no.covariates - least.req.iterations * minmax.batchsize
+  # Next up, equally spread these across an array of length no.workers, ignoring overflow for now:
+  last.iter.batchsizes.base = rep(floor(no.remaining.covs / no.workers), no.workers)
+  # Now, how many overflow covariates did we ignore:
+  no.overflow.covs = no.remaining.covs - sum(last.iter.batchsizes)
+  # And lastly we create another array, which consists of no.overflow.covs 1's and rest 0, of length no.workers:
+  last.iter.batchsizes.overflow = c(rep(1, no.overflow.covs), rep(0, no.workers - no.overflow.covs))
+  # and sum them up:
+  last.iter.batchsizes = last.iter.batchsizes.base + last.iter.batchsizes.overflow
+
+  return(list(optimal.batchsize = minmax.batchsize, optimal.no.batches = least.req.iterations * no.workers,
+              last.batchsizes = last.iter.batchsizes))
 }
+
 
 singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
                                      progress = 50, max.coef = 5, upper.bound.correlation = 0.95, snps.are.named = FALSE,
