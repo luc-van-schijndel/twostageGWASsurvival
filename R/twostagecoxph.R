@@ -363,7 +363,7 @@ twostagecoxph.control <- function(report.lowest.amount = 5, return.raw = FALSE, 
      ) stop("max.batchsize must be an integer scalar")
   if(max.batchsize < 2) stop("max.batchsize must be 2 or greater")
   if(!is.numeric(lower.bound.variance) ||
-     (lower.bound.variance[1] < 0 || lower.bound.variance[1] => 1) ||
+     (lower.bound.variance[1] < 0 || lower.bound.variance[1] >= 1) ||
      length(lower.bound.variance) != 1
   ) stop("lower.bound.variance must be an double scalar in the interval [0,1)")
   if(!is.numeric(upper.bound.correlation) ||
@@ -412,28 +412,51 @@ convergence.check <- function(coxph.model, max.coef){
 # The primary goal is to minimize the maximum number of covariates in one batch in one worker, by providing an equal spread.
 # Think of it as a box, with 3 dimensions: no.workers and no.iterations at the base and the batchsize as height. We want
 # to minimize the iterations first, then the batchsize, and finally provide an equal spread.
+#
+# This function is reused by both the first and second stage, and can optimize both stages with the same algorithm.
+# For the first stage, this should be quite obvious, as it is written to optimalize the case where all batches
+# are of equal size, which should be the case in the first stage.
+# For the second stage, this is not the case. Consider 6 covariates for 3 workers. We test for interations, so we
+# get a triangular matrix of covariate pairs that need to be tested. The optimal configuration for this is:
+# x  123456
+# 1: @@@@@@
+# 2:  #####
+# 3:   $$$$
+# 4:    $$$
+# 5:     ##
+# 6:      @
+# where each symbol represents one of the workers. This way every worker gets 7 interations to be tested, and
+# the assignment is done automaticaly right by using the first-in last-out principle. The $ worker is namely
+# expected to finish first with all interations between 3.
+# So, by inputting the no.covariates divided by 2, we can still obtain an optimal configuration (odd numbers work similar). Also, we divide
+# max.batchsize by 2, to account for the memory usage: we do after all keep twice as much covariates in memory in the second stage.
+#
 # Returns a list, containing the optimal.batchsize, the optimal.no.batches and last.batchsizes, which is an array of length no.workers of integers denoting
 # the number of covariates in the batches of the last iteration.
 optimal.batch.configuration <- function(no.covariates, max.batchsize, no.workers = 1){
 
   # Firstly, we calculate the least required iterations:
-  least.req.iterations = ceiling( no.covariates / (max.batchsize * no.workers) )
+  (least.req.iterations = ceiling( no.covariates / (max.batchsize * no.workers) ))
   # Next we aim to minimize the maximum batchsize. To do so, we calculate the
   # lowest batchsize that would suffice:
-  minmax.batchsize = ceiling(no.covariates / (no.workers * least.req.iterations))
+  (minmax.batchsize = ceiling(no.covariates / (no.workers * least.req.iterations)))
 
   # Lastly, we need to distribute the remaining covariates over the batches in the last iteration. This is the hardest part.
   # First, how many remaining covariates:
-  no.remaining.covs = no.covariates - least.req.iterations * minmax.batchsize
-  # Next up, equally spread these across an array of length no.workers, ignoring overflow for now:
-  last.iter.batchsizes.base = rep(floor(no.remaining.covs / no.workers), no.workers)
-  # Now, how many overflow covariates did we ignore:
-  no.overflow.covs = no.remaining.covs - sum(last.iter.batchsizes)
-  # And lastly we create another array, which consists of no.overflow.covs 1's and rest 0, of length no.workers:
-  last.iter.batchsizes.overflow = c(rep(1, no.overflow.covs), rep(0, no.workers - no.overflow.covs))
-  # and sum them up:
-  last.iter.batchsizes = last.iter.batchsizes.base + last.iter.batchsizes.overflow
+  (no.remaining.covs = no.covariates - (least.req.iterations-1) * minmax.batchsize * no.workers)
 
+  # Next up, equally spread these across an array of length no.workers, ignoring overflow for now:
+  (last.iter.batchsizes.base = rep(floor(no.remaining.covs / no.workers), no.workers))
+  # Now, how many overflow covariates did we ignore:
+  (no.overflow.covs = no.remaining.covs - sum(last.iter.batchsizes.base))
+  # And lastly we create another array, which consists of no.overflow.covs 1's and rest 0, of length no.workers:
+  (last.iter.batchsizes.overflow = c(rep(1, no.overflow.covs), rep(0, no.workers - no.overflow.covs)))
+  # and sum them up:
+  (last.iter.batchsizes = last.iter.batchsizes.base + last.iter.batchsizes.overflow)
+
+  (list(optimal.batchsize = minmax.batchsize, optimal.no.batches = least.req.iterations * no.workers,
+        last.batchsizes = last.iter.batchsizes))
+  (matrix(c(rep(minmax.batchsize, (least.req.iterations-1)*no.workers), last.iter.batchsizes), ncol = no.workers, byrow = TRUE))
   return(list(optimal.batchsize = minmax.batchsize, optimal.no.batches = least.req.iterations * no.workers,
               last.batchsizes = last.iter.batchsizes))
 }
@@ -767,17 +790,21 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
 
 firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, max.coef = 5,
                             snps.are.named = FALSE, updatefile = updatefile, lower.bound.variance = 0.1, ...){
+  # In the first stage, we iterate over all covariates and fit a uni-variate coxph model
+  # and save the (raw) p-values of the covariates in a vector to be returned.
   start.time.first.stage <- proc.time()[3]
   p.value.vector <- rep(NA, length = dim(covariate.matrix)[2])
   for(covariate.index in 1:length(p.value.vector)){
+    # For this specific covariate, we fit a coxph model:
     this.covariate <- covariate.matrix[, covariate.index]
+    # We perform a prefitting check on the variance of the covariate
     if(prefitting.check.one(this.covariate, lower.bound.variance)){
       withCallingHandlers(
+        # Then fit the model, passing the ... parameters to the coxph() function
         fitted.model <-
           coxph(survival.dataset ~ this.covariate, ...),
         warning = function(w) {
-          #print(w)
-          #print(str(w))
+          #We muffle some warnings that are accounted for, in order to proceed with the (long) process
           if (grepl("coefficient may be infinite", w$message)) {
             invokeRestart("muffleWarning")
             #An error was given, which is taken into account in convergence.check
@@ -789,12 +816,15 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
           }
         }
       )
+      # We check for convergence, i.e. all coefficients are smaller then max.coef
       if (convergence.check(fitted.model, max.coef)) {
-      p.value.vector[covariate.index] <-
-        summary(fitted.model)$coefficients[1, 5]
+        #then we save the p-value in the vector, at the appropriate index
+        p.value.vector[covariate.index] <-
+          summary(fitted.model)$coefficients[1, 5]
       }
     }
 
+    # If we arrive at a multiple of 'progress', we print the current progress:
     if(max(covariate.index %% progress == 0, FALSE, na.rm = TRUE)){
       progress.frac <- covariate.index/length(p.value.vector)
       clear.current.line()
@@ -806,11 +836,13 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
     }
   }
 
+  # If we're done with all the covariates, we print that we are (if outputs are not disabled):
   if(progress != 0){
     clear.current.line()
     cat("\rFirst stage complete. Commencing second stage. ", file = updatefile)
   }
 
+  #and we assign the names of the covariates to the constructed vector:
   if(snps.are.named) {
     names(p.value.vector) <- dimnames(covariate.matrix)[[2]]
   } else names(p.value.vector) <- 1:length(p.value.vector)
@@ -824,9 +856,14 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
                                       snps.are.named = FALSE, lower.bound.variance = 0.1, ...){
   start.time.first.stage <- proc.time()[3]
 
+  #before we start the parallel process, we want to divide the workload as evenly as possible
+  # For this we have the helperfunction optimal.batch.configuration:
   no.covariates <- dim(covariate.matrix)[2]
   no.workers <- foreach::getDoParWorkers()
   optimal.batchconf <- optimal.batch.configuration(no.covariates, max.batchsize, no.workers)
+  #this returns a list of the total number of batches, the optimal maximum size of the batch,
+  # and the sizes of the batches in the last iteration, in case the covariates can't be spread
+  # spread perfectly equal.
 
   optimal.batchsize <- optimal.batchconf$optimal.batchsize
   no.processes <- optimal.batchconf$optimal.no.batches
