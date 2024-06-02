@@ -408,7 +408,7 @@ convergence.check <- function(coxph.model, max.coef){
 
 
 
-# This one is interesting, it aims to calculate an optimal number of batches to divide over the workers.
+# This function is interesting, it aims to calculate an optimal number of batches to divide over the workers.
 # The primary goal is to minimize the maximum number of covariates in one batch in one worker, by providing an equal spread.
 # Think of it as a box, with 3 dimensions: no.workers and no.iterations at the base and the batchsize as height. We want
 # to minimize the iterations first, then the batchsize, and finally provide an equal spread.
@@ -465,6 +465,7 @@ optimal.batch.configuration <- function(no.covariates, max.batchsize, no.workers
 singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
                                      progress = 50, max.coef = 5, upper.bound.correlation = 0.95, snps.are.named = FALSE,
                                      updatefile = "", lower.bound.variance = 0.1, ...){
+  # first step is the first stage, which is handled in another function
   first.stage.result <-
     firststagecoxph(
       survival.dataset,
@@ -476,13 +477,9 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
       lower.bound.variance = lower.bound.variance,
       ...
     )
-  if(snps.are.named) {
-    names(first.stage.result) = dimnames(covariate.matrix)[[2]]
-  } else {
-    names(first.stage.result) = 1:dim(covariate.matrix)[2]
-  }
-  first.stage.rejections <- (first.stage.result < first.stage.threshold)
 
+  # make an index-list of the rejected covariates
+  first.stage.rejections <- (first.stage.result < first.stage.threshold)
   passed.indices <- which(first.stage.rejections == TRUE)
   amount.rejections <- max(sum(first.stage.rejections, na.rm = TRUE), 0, na.rm = TRUE)
 
@@ -491,7 +488,8 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
   if(amount.rejections < 2) return(list(second.stage.sparse.matrix = NA, passed.indices = passed.indices,
                                         first.stage.p.values = first.stage.result))
 
-  relevant.indices <- utils::combn(passed.indices, 2)
+  # As a first step of the second stage, we want to initialize the output matrix,
+  # this will be part of the return value
   output.matrix <- matrix(NA, nrow = amount.rejections, ncol = amount.rejections)
   if(snps.are.named) {
     dimnames(output.matrix) <- list(dimnames(covariate.matrix)[[2]][passed.indices], NULL)
@@ -499,20 +497,25 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
     dimnames(output.matrix) <- list(passed.indices, NULL)
   }
 
+  #start the loop over the pairs of interactions by iterating over the indices
   start.time.second.stage <- proc.time()[3]
   for (first.index in 1:(amount.rejections-1)){
     for (second.index in (first.index+1):amount.rejections){
+
+      #save the covariates and their indices in separate variables
       index.first.covariate  <- passed.indices[first.index]
       index.second.covariate <- passed.indices[second.index]
       covariate.one <- covariate.matrix[, index.first.covariate]
       covariate.two <- covariate.matrix[, index.second.covariate]
+
+      #perform a prefitting check, to see if their correlation isn't too large
       if(prefitting.check.two(covariate.one, covariate.two, upper.bound.correlation)) {
         withCallingHandlers(
+          # Then fit the model, passing the ... parameters to the coxph() function
           fitted.model <-
             coxph(survival.dataset ~ covariate.one * covariate.two, ...),
           warning = function(w) {
-            #print(w)
-            #print(str(w))
+            #We muffle some warnings that are accounted for, in order to not interrupt the (long) process
             if (grepl("coefficient may be infinite", w$message)) {
               invokeRestart("muffleWarning")
               #An error was given, which is taken into account in convergence.check
@@ -524,13 +527,15 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
             }
           }
         )
+        # We check for convergence, i.e. all coefficients are smaller then max.coef
         if (convergence.check(fitted.model, max.coef)) {
+          #then we save the p-value in the matrix, at the appropriate index
           output.matrix[first.index, second.index] <-
             summary(fitted.model)$coefficients[3, 5]
         }
       }
 
-
+      # If we arrive at an iteration that is a multiple of 'progress', we print the current progress:
       if(max((amount.rejections*(first.index-1) + second.index - first.index*(first.index+1)/2) %% progress == 0, FALSE, na.rm = TRUE)){
         progress.frac <- (amount.rejections*(first.index-1) + second.index - first.index*(first.index+1)/2)/(amount.rejections*(amount.rejections-1)/2)
 
@@ -548,6 +553,7 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
     }
   }
 
+  # if the covariates are named, we save them to a separate variable, to be used later
   names.vector <- rep("NA", dim(covariate.matrix)[2])
   if(snps.are.named){
     names.vector[passed.indices] = dimnames(covariate.matrix)[[2]][passed.indices]
@@ -555,7 +561,7 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
     names.vector[passed.indices] = passed.indices
   }
 
-  #output.matrix is a dense matrix, which we need to expand to a sparse matrix with proper indexing
+  #output.matrix is a dense matrix, which we need to expand to a sparse matrix with proper indexing to save on storage
   non.na.indices <- which(!is.na(output.matrix), arr.ind = TRUE)
   second.stage.sparse.matrix <- Matrix::sparseMatrix(i = passed.indices[non.na.indices[,1]],j = passed.indices[non.na.indices[,2]],
                                                      x = as.vector(output.matrix[non.na.indices]), triangular = TRUE,
