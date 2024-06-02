@@ -871,16 +871,21 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
   # and the sizes of the batches in the last iteration, in case the covariates can't be spread
   # spread perfectly equal.
 
+  # We process the outcome into batches
   optimal.batchsize <- optimal.batchconf$optimal.batchsize
   no.processes <- optimal.batchconf$optimal.no.batches
   batchsizes.vector <- c(rep(optimal.batchsize, no.processes - no.workers),
                          optimal.batchconf$last.batchsizes)
+  #then we ply it into a matrix, from which the parallel workers can obtain their
+  # assigned indices
   matrix.indices.processes <- matrix(c(seq_len(sum(batchsizes.vector)),
                                        rep(NA, no.workers*max(batchsizes.vector) -
                                              sum(optimal.batchconf$last.batchsizes))),
                                      ncol = length(batchsizes.vector),
                                      nrow = optimal.batchsize)
 
+  # we start the foreach loop, which will return a list, to account for the non-sequential
+  # operation. Also, foreach() can't handle named vectors, or I couldn't make it work
   process.index <- NULL #suppressing a note from devtools::check()
   p.value.list <- foreach::foreach(process.index = seq_len(no.processes),
                                      .packages = c("survival", "utils"),
@@ -888,20 +893,26 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
                                                  "clear.current.line"),
                                      .combine = function(x,y) mapply(c, x, y, SIMPLIFY = FALSE),
                                      .inorder = FALSE) %dopar% {
+    # Note: the foreach loop iterates over the batches, which consist of a subset of covariate (indices)
+    # so we still have a for-loop within the foreach.
+    # We obtain the indices for this batch:
     this.process.indices = (matrix.indices.processes[,process.index])[!is.na(matrix.indices.processes[,process.index])]
+    #if the batch is empty, return NA's:
     if(length(this.process.indices) == 0) return(list(p.values = rep(NA, optimal.batchsize),
                                                       names = rep(NA, optimal.batchsize),
-                                                      og.index = rep(NA, optimal.batchsize))) #if the batch is empty, return NA's
+                                                      og.index = rep(NA, optimal.batchsize)))
+    # if not, we start fitting the coxph models for the assigned covariates:
     this.process.p.values <- rep(NA, length(this.process.indices))
     for(covariate.index in 1:length(this.process.indices)){
       this.covariate <- covariate.matrix[, this.process.indices[covariate.index]]
+      #perform a prefitting check, to check if the covariate has enough variance
       if(prefitting.check.one(this.covariate, lower.bound.variance)){
         withCallingHandlers(
+          # Then fit the model, passing the ... parameters to the coxph() function
           fitted.model <-
             coxph(survival.dataset ~ this.covariate, ...),
           warning = function(w) {
-            #print(w)
-            #print(str(w))
+            #We muffle some warnings that are accounted for, in order to proceed with the (long) process
             if (grepl("coefficient may be infinite", w$message)) {
               invokeRestart("muffleWarning")
               #An error was given, which is taken into account in convergence.check
@@ -913,12 +924,16 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
             }
           }
         )
+        # We check for convergence, i.e. all coefficients are smaller then max.coef
         if (convergence.check(fitted.model, max.coef)) {
+          #then we save the p-value in the vector, at the appropriate index.
+          #note that this is indexed based on this current batch
           this.process.p.values[covariate.index] <-
             summary(fitted.model)$coefficients[1, 5]
         }
       }
 
+      # If we arrive at a multiple of 'progress', we write the current progress to the updatefile
       if(max(this.process.indices[covariate.index] %% progress == 0, FALSE, na.rm = TRUE)){
         progress.frac <- this.process.indices[covariate.index]/no.covariates
         progress.frac <- (process.index + progress.frac)/(no.processes + 1)
@@ -940,6 +955,7 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
                               names = names(this.process.p.values),
                               og.index = this.process.indices)
 
+    #return the constructed list. Note that these lists will be concatenated by foreach()
     return(this.process.list)
   }
 
