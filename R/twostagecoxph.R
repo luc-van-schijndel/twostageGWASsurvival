@@ -295,7 +295,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   names(total.runtime) = c("seconds")
 
   clear.current.line()
-  if(progress != 0) cat("\rAnalysis completed. Runtime:", total.runtime, file = updatefile)
+  if(progress != 0) cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] Analysis completed. Runtime:", total.runtime, file = updatefile)
 
   return.object <- list(result.list = result.list,
                         most.significant.results = lowest.five.list,
@@ -545,7 +545,7 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
         if(estimated.seconds < 3600) text.estimated.time = paste0(round(estimated.seconds/60, digits = 1), " minutes.")
         if(estimated.seconds < 60)   text.estimated.time = "less than a minute."
         clear.current.line()
-        cat("\rSecond stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
+        cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] Second stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
             "Estimated time until completion: ",
             text.estimated.time, sep = "", file = updatefile)
         utils::flush.console()
@@ -701,7 +701,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
           if(estimated.seconds < 3600) text.estimated.time = paste0(round(estimated.seconds/60, digits = 1), " minutes.")
           if(estimated.seconds < 60)   text.estimated.time = "less than a minute."
           clear.current.line()
-          cat("\rSecond stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
+          cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] Second stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
               "Estimated time until completion: ",
               text.estimated.time, sep = "", file = updatefile)
           utils::flush.console()
@@ -758,7 +758,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
               if(estimated.seconds < 3600) text.estimated.time = paste0(round(estimated.seconds/60, digits = 1), " minutes.")
               if(estimated.seconds < 60)   text.estimated.time = "less than a minute."
               clear.current.line()
-              cat("\rSecond stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
+              cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] Second stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
                   "Estimated time until completion: ",
                   text.estimated.time, sep = "", file = updatefile)
               utils::flush.console()
@@ -834,7 +834,7 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
     if(max(covariate.index %% progress == 0, FALSE, na.rm = TRUE)){
       progress.frac <- covariate.index/length(p.value.vector)
       clear.current.line()
-      cat("\r", "First stage is at ", round(progress.frac*100, digits = 0), "% progress. ",
+      cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] First stage is at ", round(progress.frac*100, digits = 0), "% progress. ",
           "Estimated time until completion first stage: ",
           round((1-progress.frac)/progress.frac*(proc.time()[3] - start.time.first.stage)/60, digits = 1),
           " minutes. ", sep = "", file = updatefile)
@@ -845,7 +845,7 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
   # If we're done with all the covariates, we print that we are (if outputs are not disabled):
   if(progress != 0){
     clear.current.line()
-    cat("\rFirst stage complete. Commencing second stage. ", file = updatefile)
+    cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] First stage complete. Commencing second stage. ", file = updatefile)
   }
 
   #and we assign the names of the covariates to the constructed vector:
@@ -938,7 +938,7 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
         progress.frac <- this.process.indices[covariate.index]/no.covariates
         progress.frac <- (process.index + progress.frac)/(no.processes + 1)
         clear.current.line()
-        cat("\r", "First stage is at ", round(progress.frac*100, digits = 0), "% progress. ",
+        cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] First stage is at ", round(progress.frac*100, digits = 0), "% progress. ",
             "Estimated time until completion first stage: ",
             round((1-progress.frac)/progress.frac*(proc.time()[3] - start.time.first.stage)/60, digits = 1),
             " minutes. ", sep = "", file = updatefile)
@@ -961,7 +961,7 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
 
   if(progress != 0){
     clear.current.line()
-    cat("\rFirst stage complete. Commencing second stage. ", file = updatefile)
+    cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] First stage complete. Commencing second stage. ", file = updatefile)
   }
   return(p.value.list)
 }
