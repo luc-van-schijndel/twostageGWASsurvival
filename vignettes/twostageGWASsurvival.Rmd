@@ -16,11 +16,10 @@ knitr::opts_chunk$set(
 
 The package implements a two stage method for finding significant interaction effects within a high-dimensional setting where the covariates outnumber the subjects assuming a Cox proportional hazards model.
 
-Since the package is not yet available on CRAN, installation goes as follows:
+Since the package is not (yet) available on CRAN, installation goes as follows:
 
 ```{r setup}
-knitr::opts_chunk$set(include = FALSE)
-devtools::install_github("luc-van-schijndel/twostageGWASsurvival")
+devtools::install_github("luc-van-schijndel/twostageGWASsurvival", quiet = TRUE, build_manual = TRUE, build_vignettes = TRUE)
 library(twostageGWASsurvival)
 ```
 
@@ -92,7 +91,7 @@ This means that the interaction of these pairs are so similar to the interaction
 
 # Memory
 
-This function is written with the intention that it would be used in a Genome Wide Association Study. In such a study, the amount of covariates can rise to the millions, which gives rise to problems concerning memory. To address this, a function has been implemented to read to covariates in batches from multiple files. This way, the user has control over how much memory is required for the operation of the function. The user has to provide the files themselves, and a way for the function to read them. The large variety of data structures does not allow for an easy way for the function the adapt the files to something useable, so the user is therefore required to do some work beforehand. The files should be structured in such a way, that the user-provided function results in a matrix where each column corresponds to a covariate. Additional requirements are described in the documentation. Lets make some files from the previous example to show the operations:
+This function is written with the intention that it would be used in a Genome Wide Association Study. In such a study, the amount of covariates can rise to the millions, which gives rise to problems concerning memory. To address this, a function has been implemented to read to covariates in batches from multiple files. This way, the user has control over how much memory is required for the operation of the function. The user has to provide the files themselves, and a way for the function to read them. The large variety of data structures does not allow for an easy way for the function the adapt the files to something useable, so the user is therefore required to do some work beforehand. The files should be structured in such a way, that the user-provided function results in a matrix where each column corresponds to a covariate. Additional requirements are described in the documentation. Lets make some files from the previous example to show how to pass files to the package:
 
 ```{r splitting toy GWAS into multiple files}
 number.of.covs <- dim(example_snp_data)[2]
@@ -113,19 +112,22 @@ for(file.num in 1:number.of.files){
               file = temp.snpfile.paths[file.num])
 }
 
-#Associated read function to be passed to the batch-function: function(x) as.matrix(read.table(x))
 ```
 
-The batch function allows for the last file to have less covariates than the other files. This is however the only flexibility implemented; the function assumes all other files are structured similarly, e.g. same dimensions, same presence of headers, etc.
+The batch function does allows for the last file to have less covariates than the other files. This is however the only flexibility implemented; the function assumes all other files are structured similarly, e.g. same dimensions, same presence of headers, etc.
 
 The result from the function using batches is then the same as the one using the basic function:
 
 ```{r analyse multiple files}
 print(batched.result <- 
         batched.twostagecoxph(example_survival_data, temp.snpfile.paths,
-                              number.of.covariates = number.of.covs))
+                              number.of.covariates = number.of.covs,
+                              read.function = function(x) as.matrix(read.table(x))
+                              )
+      )
 ```
 
+It is important to pass the necessary function to read the files into a matrix. The files can be in any format, so long as the `read.function` parses the files into the correct matrix, with the appropriate aforementioned constraints. By default, the function `function(x) as.matrix(read.table(x))` is used, so in this explicit example this parameter was unnecessary, but for clarity of how to use the function was specified explicitly. 
 Note that we must provide the paths to the files as a vector, and that we let the function know how many covariates can be found in all files combined. The function does allow that to be done automatically, but this requires it to read through all files individually, which costs time. The user probably already knows this, so it is best if it is provided. Also note that this function performs its operations in parallel, just like the previous example with \code{multicore = TRUE}.
 
 When using this function, a consideration must be made concerning the amount of covariates in each file. The function always has no more than the contents of two files in memory on each core, but, it also needs some additional memory for fitting the model, and saving the results, etc. It is therefore recommended that no more than one quarter of the available memory of each core would be used by one file, just to be on the safe side. Contrary to that, it is also recommended that the files are as large as possible as every file has some overhead, e.g. creating the connection. Making the files as large as possible minimizes the number of files, while not impacting the overall analysis. 
