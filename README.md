@@ -1,5 +1,5 @@
 # twostageGWASsurvival
-An R package that implements a two stage statistical method for detecting epistasis in GWAS for survival data. 
+An R package that implements a two stage statistical method for detecting epistasis in GWAS for survival data which follows the Cox proportional hazards model. 
 
 Installation of the package can be done by using the `install_github` function from the `devtools` package:
 
