@@ -1,6 +1,15 @@
 # twostageGWASsurvival
-Implements a Two Stage Method for Detecting Epistasis in GWAS for Survival Data
+An R package that implements a two stage statistical method for detecting epistasis in GWAS for survival data. 
 
-Has functionality for parallel processing, as well as for the user to provide the covariates in seperate files to alleviate memory issues. 
+Installation of the package can be done by using the `install_github` function from the `devtools` package:
 
-TODO: add proper description to this file. And add a reference to paper. 
+```
+devtools::install_github("luc-van-schijndel/twostageGWASsurvival")
+library(twostageGWASsurvival)
+```
+
+For a guide on its use, see the vignette in the vignettes folder, or use the command `vignette('twostageGWASsurvival')` after installation. 
+The package has functionality for parallel processing, as well as for the user to provide the covariates in separate files to alleviate memory issues. 
+
+The theory for the validity of this statistical test is described in a paper by Jonker et al., which can be found [here](404 not found) (paper to be published to ArXiV).
+
