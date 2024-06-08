@@ -339,6 +339,7 @@ batched.twostagecoxph <- function(survival.dataset, covariate.filepaths, first.s
 
 batched.secondstagecoxph <- function(survival.dataset, covariate.filepaths, first.stage.threshold,
                                   progress = 50, max.coef = 5, updatefile = "", max.batchsize = 1000,
+                                  lower.bound.variance = 0.1,
                                   upper.bound.correlation = 0.95,
                                   read.function = function(x) as.matrix(read.table(x)),
                                   number.of.covariates,
@@ -600,7 +601,7 @@ batched.secondstagecoxph <- function(survival.dataset, covariate.filepaths, firs
 batched.firststagecoxph <- function(survival.dataset, covariate.filepaths, progress = 50,
                                       max.coef = 5, max.batchsize = 1000, updatefile = "",
                                     read.function = function(x) as.matrix(read.table(x)),
-                                    number.of.covariates,
+                                    number.of.covariates, lower.bound.variance = 0.1,
                                     snps.are.named = FALSE){
   start.time.first.stage <- proc.time()[3]
 
