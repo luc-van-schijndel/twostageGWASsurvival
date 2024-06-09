@@ -52,7 +52,7 @@ An object of class \code{twostageGWAS}, which is a list of 7 entries:
     describe the interaction corresponding to the p-values in the previous entry. }
     \item{\code{names.one}, \code{names.two}}{if the covariates are named, these are the names
     of the covariates found on the aforementioned indices.}
-  }\cr }
+  }}
   \item{most.significant.results}{A list describing the most significant results found. The
   number of results reported is specified by the control parameter, default 5. The
   list contains 3 items:
@@ -66,7 +66,7 @@ An object of class \code{twostageGWAS}, which is a list of 7 entries:
     \item{\code{duplicate.interactions}}{the list of duplicate interactions found, corresponding to
     the interactions specified in this list. An interaction is said to be duplicate if the corresponding
     p-value is the same up until 7 significant figures. }
-  }\cr }
+  }}
   \item{p.value.matrix}{A \code{sparseMatrix} object from the package \code{Matrix}, specifying the resulting
   upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
     is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
@@ -77,7 +77,7 @@ An object of class \code{twostageGWAS}, which is a list of 7 entries:
   \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
   were found to be marginally significant in the first stage. }
   \item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
-  are \emph{not} corrected for the multiple tested hypotheses. }
+  are not corrected for the multiple tested hypotheses. }
   \item{fst}{The threshold for significance used in the first stage as specified in \code{first.stage.threshold}}
   \item{runtime}{The total runtime of the function in seconds.}
   \item{call}{The matched call.}

@@ -1,6 +1,6 @@
 Package: twostageGWASsurvival
 Title: Implement a Two Stage Method for Detecting Epistasis in GWAS for Survival Data
-Version: 0.4.1
+Version: 0.5.0
 Encoding: UTF-8
 Author: Luc van Schijndel [aut, cre],
     Marianne Jonker [aut]
