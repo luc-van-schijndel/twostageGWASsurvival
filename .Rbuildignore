@@ -16,3 +16,4 @@
 ^\.gitignore$
 ^doc$
 ^Meta$
+^vignettes/twostageGWASsurvival.html

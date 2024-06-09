@@ -346,7 +346,7 @@ covariates outnumber the subjects assuming a Cox proportional hazards
 model.</p>
 <p>Since the package is not (yet) available on CRAN, installation goes
 as follows:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;luc-van-schijndel/twostageGWASsurvival&quot;</span>, <span class="at">quiet =</span> <span class="cn">TRUE</span>, <span class="at">build_manual =</span> <span class="cn">TRUE</span>, <span class="at">build_vignettes =</span> <span class="cn">TRUE</span>)</span>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;luc-van-schijndel/twostageGWASsurvival&quot;</span>, <span class="at">quiet =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(twostageGWASsurvival)</span></code></pre></div>
 <p>The two stage method is, as the name implies, based on two stages.
 The first stage tests all covariates individually for a significant
@@ -551,7 +551,7 @@ one using the basic function:</p>
 <span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>                              <span class="at">read.function =</span> <span class="cf">function</span>(x) <span class="fu">as.matrix</span>(<span class="fu">read.table</span>(x))</span>
 <span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>                              )</span>
 <span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>      )</span>
-<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co">#&gt;                                                                                     First stage complete. Commencing second stage.                                                                                     Analysis completed. Runtime: 9.89                                                                                    </span></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co">#&gt;                                                                                     First stage complete. Commencing second stage.                                                                                     Analysis completed. Runtime: 16.65                                                                                    </span></span>
 <span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="co">#&gt; Call:</span></span>
 <span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co">#&gt; batched.twostagecoxph(survival.dataset = example_survival_data, </span></span>
 <span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="co">#&gt;     covariate.filepaths = temp.snpfile.paths, number.of.covariates = number.of.covs, </span></span>

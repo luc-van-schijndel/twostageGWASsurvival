@@ -19,7 +19,7 @@ The package implements a two stage method for finding significant interaction ef
 Since the package is not (yet) available on CRAN, installation goes as follows:
 
 ```{r setup}
-devtools::install_github("luc-van-schijndel/twostageGWASsurvival", quiet = TRUE, build_manual = TRUE, build_vignettes = TRUE)
+devtools::install_github("luc-van-schijndel/twostageGWASsurvival", quiet = TRUE)
 library(twostageGWASsurvival)
 ```
 
