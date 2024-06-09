@@ -5,7 +5,6 @@
 ^R/todo_list$
 ^R/notes$
 ^data-raw$
-^R/to_ask_mar\.R$
 ^debug environment\.RData$
 ^cran-comments\.md$
 ^man/batched\.firststagecoxph\.Rd$
@@ -17,3 +16,4 @@
 ^\.gitignore$
 ^doc$
 ^Meta$
+^vignettes/twostageGWASsurvival.html

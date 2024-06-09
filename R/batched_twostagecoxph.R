@@ -149,6 +149,7 @@ batched.twostagecoxph <- function(survival.dataset, covariate.filepaths, first.s
   progress = control$progress
   max.coef = control$max.coef
   max.batchsize = control$max.batchsize
+  lower.bound.variance = control$lower.bound.variance
   upper.bound.correlation = control$upper.bound.correlation
 
   # first.stage.threshold = 0.05; multiple.hypotheses.correction = "bonferroni"; multicore = FALSE; report.lowest.amount = 5; return.raw = FALSE; progress = 0; max.coef = 5; max.batchsize = 84; updatefile = ""; upper.bound.correlation = 0.95; snps.are.named = FALSE
@@ -220,6 +221,7 @@ batched.twostagecoxph <- function(survival.dataset, covariate.filepaths, first.s
       max.coef = max.coef,
       max.batchsize = max.batchsize,
       updatefile = updatefile,
+      lower.bound.variance = lower.bound.variance,
       upper.bound.correlation = upper.bound.correlation,
       read.function = read.function,
       number.of.covariates = number.of.covariates,
@@ -337,6 +339,7 @@ batched.twostagecoxph <- function(survival.dataset, covariate.filepaths, first.s
 
 batched.secondstagecoxph <- function(survival.dataset, covariate.filepaths, first.stage.threshold,
                                   progress = 50, max.coef = 5, updatefile = "", max.batchsize = 1000,
+                                  lower.bound.variance = 0.1,
                                   upper.bound.correlation = 0.95,
                                   read.function = function(x) as.matrix(read.table(x)),
                                   number.of.covariates,
@@ -349,6 +352,7 @@ batched.secondstagecoxph <- function(survival.dataset, covariate.filepaths, firs
     max.batchsize = max.batchsize,
     updatefile = updatefile,
     read.function = read.function,
+    lower.bound.variance = lower.bound.variance,
     number.of.covariates = number.of.covariates,
     snps.are.named = snps.are.named
   )
@@ -597,7 +601,7 @@ batched.secondstagecoxph <- function(survival.dataset, covariate.filepaths, firs
 batched.firststagecoxph <- function(survival.dataset, covariate.filepaths, progress = 50,
                                       max.coef = 5, max.batchsize = 1000, updatefile = "",
                                     read.function = function(x) as.matrix(read.table(x)),
-                                    number.of.covariates,
+                                    number.of.covariates, lower.bound.variance = 0.1,
                                     snps.are.named = FALSE){
   start.time.first.stage <- proc.time()[3]
 
@@ -627,7 +631,7 @@ batched.firststagecoxph <- function(survival.dataset, covariate.filepaths, progr
     this.process.p.values <- rep(NA, length(this.process.indices))
     for(covariate.index in 1:length(this.process.indices)){
      this.covariate <- this.batch.covariates[,covariate.index]
-     if(prefitting.check.one(this.covariate)){
+     if(prefitting.check.one(this.covariate, lower.bound.variance)){
        withCallingHandlers(
          fitted.model <- coxph(survival.dataset ~ this.covariate),
          warning = function(w) {

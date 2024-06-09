@@ -57,7 +57,7 @@
 #try Rprof(). See ?utils::Rprof
 
 #Url terug doen in DESCRIPTION : URL: https://github.com/luckylluck2/twostageGWASsurvival
-#                                BugReports: https://github.com/luckylluck2/twostageGWASsurvival/issues
+#                                BugReports: https://github.com/luckylluck2/twostageGWASsurvival/issues (D)
 
 #check temporary files management. Is dit goed gedaan? unlink() files na example?
 
@@ -66,3 +66,9 @@
 #ld-plot in examples (?) en vignette. Packages in Suggests (?)
 
 #tests voor doParallel niet geinstalleerd-checks toevoegen.
+
+# check usage of optimal batch conf to update output
+
+# parallel first stage seems to allocate weird covariates
+
+# add timestamps to logs (D)

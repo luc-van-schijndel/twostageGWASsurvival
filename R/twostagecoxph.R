@@ -30,7 +30,7 @@
 #'          The main advantage is that only a fraction of the possible interactions is tested,
 #'          resulting in an enormous decrease in computation times. \cr \cr
 #'          If \code{multicore} is \code{TRUE}, the function assumes a proper parallel back-end is registered,
-#'          e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by \code{foreach} and \code{\%dopar\%}. \cr \cr
+#'          e.g. one obtained from \code{doParallel::registerDoParallel(2)}, to be used by the \code{foreach} package & functions and \code{\%dopar\%}. \cr \cr
 #'          If memory constraints become an issue, \code{\link{batched.twostagecoxph}} is available.
 #'          This function gives the user control in which parts of the set of covariates will
 #'          be in active memory, allowing for better memory management. This does require the
@@ -40,7 +40,7 @@
 #'   \item{result.list}{A list containing the results and where to find them in either 3 or 5 entries, depending on
 #'   whether or not the covariates are named in the files:
 #'   \describe{
-#'     \item{\code{p.values}}{the non-trivial p-values of the interactions. The list is sorted in ascending
+#'     \item{\code{p.values}}{The non-trivial p-values of the interactions. The list is sorted in ascending
 #'     order by this value. Any p-values that are either NA, 0, or 1 after possibly applying the
 #'     multiple hypotheses correction will not be present in this vector.}
 #'     \item{\code{index.one}, \code{index.two}}{the indices describing the two covariates that
@@ -66,13 +66,13 @@
 #'   upper triangular p-value matrix obtained from the second stage.  Unless \code{return.raw = TRUE}
 #'     is specified in the control parameter, these p-values will be corrected for the multiple hypotheses
 #'     tested with the method specified by the \code{multiple.hypotheses.correction} parameter. The names
-#'     of the dimensions of the matrix match the ones specified in the files, if the \code{read.function} assigns
+#'     of the dimensions of the matrix match the ones specified in the files, if the \code{read.function} applied to those files assigns
 #'     dimnames to the matrix. The row and columns corresponding to covariates that were not named in the input
-#'     matrix, have the string \code{as.character(NA)} for names (Note: not NA itself).}
+#'     matrix, have the string \code{as.character(NA)} for names (Note: not \code{NA} itself).}
 #'   \item{marginal.significant}{A vector of named integers, specifying the indices of covariates which
 #'   were found to be marginally significant in the first stage. }
 #'   \item{first.stage}{A vector specifying the p-values found in the first stage. These p-values
-#'   are \emph{not} corrected for the multiple tested hypotheses. }
+#'   are not corrected for the multiple tested hypotheses. }
 #'   \item{fst}{The threshold for significance used in the first stage as specified in \code{first.stage.threshold}}
 #'   \item{runtime}{The total runtime of the function in seconds.}
 #'   \item{call}{The matched call.}
@@ -120,16 +120,26 @@
 #'
 #' # As we can see, foo and bar have different results. A lower FST generally gives more power, but it
 #' # it risks the possibility to be too strict and consequently *decreasing* power.
+
+
 twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold = 0.05,
                           multiple.hypotheses.correction = "bonferroni", multicore = FALSE,
                           updatefile = "", control = twostagecoxph.control(), ...){
+
+  # A note for code-readers:
+  # The functions called all have reasonable defaults for the parameters that make sense. This is to allow for easier debugging,
+  # but all the parameters **should** be passed to each function call (and ... whenever the function leads to a survival::coxph() call)
+  # and therefore no defaults should be used outside of debugging. The exception of course are the user-facing functions.
+
   report.lowest.amount = control$report.lowest.amount
   return.raw = control$return.raw
   progress = control$progress
   max.coef = control$max.coef
   max.batchsize = control$max.batchsize
+  lower.bound.variance = control$lower.bound.variance
   upper.bound.correlation = control$upper.bound.correlation
 
+  # If you're debugging, you can uncomment this:
   # first.stage.threshold = 0.05; multiple.hypotheses.correction = "bonferroni"; multicore = FALSE; report.lowest.amount = 5; return.raw = FALSE; progress = 0; max.coef = 5; max.batchsize = 1000; updatefile = ""; upper.bound.correlation = 0.95
   if(!survival::is.Surv(survival.dataset)) stop("survival.dataset must be a Surv object")
   if(!is.matrix(covariate.matrix)) stop("covariate.matrix must be a (strict) matrix")
@@ -147,6 +157,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   if(first.stage.threshold > 1 || first.stage.threshold < 0) stop("first.stage.threshold must be in the interval [0,1]")
   if(first.stage.threshold == 1) stop("first.stage.threshold is 1, consider decreasing this. The two stage method is not suitable for this.")
   if(first.stage.threshold == 0){
+    # we do a bit of meming
     if(stats::runif(1) < 0.5) {
       stop("first.stage.threshold is 0, consider increasing this. The two stage method is not suitable for this. \n     'None Shall Pass!' - The Black Knight (Monty Python and the Holy Grail)")
     } else
@@ -154,22 +165,13 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   }
 
 
-  if(abs(report.lowest.amount - round(report.lowest.amount)) > .Machine$double.eps^0.5 || report.lowest.amount < 1){
-    warning("report.lowest.amount must be non-negative integer. Rounding up to non-negative integer")
-    report.lowest.amount <- max(ceiling(report.lowest.amount), 1, na.rm = TRUE)
-  }
-
-  if(max.batchsize < 2) stop("max.batchsize must be 2 or greater.")
-
-
-  if(progress == 0) progress = FALSE
-
   this.call <- match.call()
 
   snps.are.named = !is.null(dimnames(covariate.matrix)[[2]])
 
+  #now that we did all the pre-call stuff, we can start the two stage process, either sequentially:
   start.time <- proc.time()[3]
-  if(multicore == FALSE){
+  if(!multicore){
     ts.output <-
       singlecore.twostagecoxph(
         survival.dataset = survival.dataset,
@@ -177,6 +179,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
         first.stage.threshold = first.stage.threshold,
         progress = progress,
         max.coef = max.coef,
+        lower.bound.variance = lower.bound.variance,
         upper.bound.correlation = upper.bound.correlation,
         snps.are.named = snps.are.named,
         updatefile = updatefile,
@@ -184,7 +187,8 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
       )
   }
 
-  if(multicore != FALSE){
+  # or parallel: (whichever was demanded)
+  if(multicore){
     if(!requireNamespace("doParallel")) stop("doParallel package is required for multicore functionality to operate. \nAttach that package or set parameter multicore = FALSE")
     ts.output <-
       multicore.twostagecoxph(
@@ -194,13 +198,15 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
         progress = progress,
         max.coef = max.coef,
         max.batchsize = max.batchsize,
-        updatefile = updatefile,
+        lower.bound.variance = lower.bound.variance,
         upper.bound.correlation = upper.bound.correlation,
         snps.are.named = snps.are.named,
+        updatefile = updatefile,
         ...
       )
   }
 
+  #if we get a trivial output, with no relevant results, we return an object that allows the user to find out why it was trivial:
   if(length(ts.output$passed.indices) < 2 || length(ts.output$second.stage.sparse.matrix@x) < 1){
     total.runtime <- proc.time()[3] - start.time
     names(total.runtime) = c("seconds")
@@ -218,13 +224,16 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
     return(return.object)
   }
 
+  # if we have relevant results, and multiple hyp.corr. was required, we do so:
   if(!return.raw){
     ts.output$second.stage.sparse.matrix@x <- stats::p.adjust(ts.output$second.stage.sparse.matrix@x, method = multiple.hypotheses.correction)
   }
 
+  # Now we create the most.siginificant.results entry for the output:
   unique.p.values <- unique(ts.output$second.stage.sparse.matrix@x)
   report.lowest.amount = min(report.lowest.amount, sum(unique.p.values < 1, na.rm = TRUE))
   if(report.lowest.amount > 0){
+    #the following variable says 'fifth', but it can by any amount, five is just the default
     fifth.lowest.unique <- stats::quantile(unique.p.values,
                                     probs = report.lowest.amount/sum(!is.na(unique.p.values)),
                                     na.rm = TRUE)
@@ -265,7 +274,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
                              duplicate.interactions = duplicate.list)
   } else lowest.five.list = list()
 
-  # We fill a list with the non-trivial results, along with corresponding index and (if availible) names
+  # We fill a list with the non-trivial results, along with corresponding index and (if available) names
   result.indices <- Matrix::which(ts.output$second.stage.sparse.matrix > 0 &
                                     ts.output$second.stage.sparse.matrix < 1 &
                                     !is.na(ts.output$second.stage.sparse.matrix), arr.ind = TRUE)
@@ -286,7 +295,7 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
   names(total.runtime) = c("seconds")
 
   clear.current.line()
-  if(progress != 0) cat("\rAnalysis completed. Runtime:", total.runtime, file = updatefile)
+  if(progress != 0) cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] Analysis completed. Runtime:", total.runtime, file = updatefile)
 
   return.object <- list(result.list = result.list,
                         most.significant.results = lowest.five.list,
@@ -311,96 +320,152 @@ twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.thresh
 #' @param report.lowest.amount integer, default 5; denotes how many of the most significant interactions
 #'                               the function should report. Altering this value does
 #'                               not affect the maximum amount reported by the \code{print.twostageGWAS} function.
-#'                               That value is always capped at 5. A lower value does affect the print function.
 #' @param return.raw logical, default FALSE; whether or not the output should contain the raw p-values or
 #'                     the multiple hypotheses corrected p-values.
 #' @param progress numeric, default 1000;  how many iterations should pass silently until an update is given
 #'                   about runtime and progress until completion of stages. Set to 0 for no output.
 #' @param max.coef numeric, default 5; maximum value for all coefficients in the fitted models. If any
-#'                   are larger than this (in absolute value), then the model rejected and ignored in
+#'                   are larger than this (in absolute value), then the model rejects them and ignored in
 #'                   further analysis. Can be used to exclude unrealistically large values.
-#' @param upper.bound.correlation numeric scalar in the interval (0,1), default 0.9; the upper bound on the correlation between two
-#'                                  covariates. If exceeded (in absolute value), the model
-#'                                  is not fitted.
 #' @param max.batchsize maximum size of one batch, default 1000; for parallel computing,
 #'                        should be lowered if issues arise concerning memory. Can be raised
 #'                        to slightly increase performance
+#' @param lower.bound.variance numeric scalar in the interval \code{[0,1)}, default 0.1; the lower bound on the variance of a covariate
+#'                              in the first stage. If the variance is lower, the model using this covariate is not fitted and the covariate is
+#'                              rejected by default.
+#' @param upper.bound.correlation numeric scalar in the interval \code{(0,1]}, default 0.9; the upper bound on the correlation between two
+#'                                  covariates and their interaction. If exceeded (in absolute value), the model using these two correlated variables
+#'                                  is not fitted and the interaction between these is rejected by default.
 #'
 #' @return a list containing the values of each of the above constants.
 #' @export
 #'
 twostagecoxph.control <- function(report.lowest.amount = 5, return.raw = FALSE, progress = 1000,
-                                  max.coef = 5, max.batchsize = 1000, upper.bound.correlation = 0.9){
-  if((!is.numeric(report.lowest.amount)) ||
+                                  max.coef = 5, max.batchsize = 1000, lower.bound.variance = 0.1,
+                                  upper.bound.correlation = 0.9){
+  if(!is.numeric(report.lowest.amount) ||
      (trunc(report.lowest.amount) != report.lowest.amount)[1] ||
-     (length(report.lowest.amount) != 1)) stop("report.lowest.amount must be an integer scalar")
+     (length(report.lowest.amount) != 1) ||
+     (report.lowest.amount <= 0)
+     ) stop("report.lowest.amount must be a strictly positive integer scalar")
   if(!is.numeric(progress) ||
      (trunc(progress) != progress)[1] ||
-     length(progress) != 1) stop("progress must be an integer scalar")
+     length(progress) != 1 ||
+     (progress < 0)
+     ) stop("progress must be a non-negative integer scalar")
   if(!is.numeric(max.coef) ||
-     (trunc(max.coef) != max.coef)[1] ||
-     length(max.coef) != 1) stop("max.coef must be an integer scalar")
+     length(max.coef) != 1 ||
+     (max.coef <= 0)
+     ) stop("max.coef must be a strictly positive double scalar")
   if(!is.numeric(max.batchsize) ||
      (trunc(max.batchsize) != max.batchsize)[1] ||
-     length(max.batchsize) != 1) stop("max.batchsize must be an integer scalar")
-  if(!is.numeric(upper.bound.correlation) ||
-     (upper.bound.correlation[1] < 0 || upper.bound.correlation[1] > 1) ||
-     length(upper.bound.correlation) != 1) stop("upper.bound.correlation must be an double scalar in the interval [0,1]")
-  if(!is.logical(return.raw) || length(return.raw) != 1) stop("return.raw must be a logical scalar")
+     length(max.batchsize) != 1
+     ) stop("max.batchsize must be an integer scalar")
   if(max.batchsize < 2) stop("max.batchsize must be 2 or greater")
+  if(!is.numeric(lower.bound.variance) ||
+     (lower.bound.variance[1] < 0 || lower.bound.variance[1] >= 1) ||
+     length(lower.bound.variance) != 1
+  ) stop("lower.bound.variance must be an double scalar in the interval [0,1)")
+  if(!is.numeric(upper.bound.correlation) ||
+     (upper.bound.correlation[1] <= 0 || upper.bound.correlation[1] > 1) ||
+     length(upper.bound.correlation) != 1
+     ) stop("upper.bound.correlation must be an double scalar in the interval (0,1]")
+  if(!is.logical(return.raw) ||
+     length(return.raw) != 1
+     ) stop("return.raw must be a logical scalar")
 
   return(list(report.lowest.amount = report.lowest.amount, return.raw = return.raw, progress = progress,
-              max.coef = max.coef, max.batchsize = max.batchsize, upper.bound.correlation = upper.bound.correlation))
+              max.coef = max.coef, max.batchsize = max.batchsize, lower.bound.variance = lower.bound.variance,
+              upper.bound.correlation = upper.bound.correlation))
 }
 
-prefitting.check.one <- function(covariate) {
-  passed <- TRUE
-  if (stats::var(covariate, na.rm = TRUE) < 0.1)
-    passed <- FALSE
-  return(passed)
+# Check that the covariate is sufficiently enough non-constant i.e. variance. Return TRUE if this suffices
+prefitting.check.one <- function(covariate, lower.bound.variance) {
+  return(
+    stats::var(covariate, na.rm = TRUE) >= lower.bound.variance
+  )
 }
 
+# Check that the correlation between the two covariates, nor the correlation between the covs and the interaction is not too large.
+# Return TRUE if it suffices
 prefitting.check.two <- function(covariate.one, covariate.two, upper.bound.correlation) {
-  passed <- TRUE
-  if (max(stats::cor(matrix(
-    c(covariate.one, covariate.two, covariate.one * covariate.two),
-    ncol = 3
-  ))[upper.tri(matrix(0, 3, 3))],
-  na.rm = TRUE) > upper.bound.correlation)
-    passed <- FALSE
-  return(passed)
+  return(
+    max(stats::cor(matrix(
+      c(covariate.one, covariate.two, covariate.one * covariate.two),
+      ncol = 3
+    ))[upper.tri(matrix(0, 3, 3))],
+    na.rm = TRUE)
+    <= upper.bound.correlation
+  )
 }
 
-convergence.check <- function(coxph.model, max.coef = 5){
-  converged <- TRUE
-  if(max(abs(coxph.model$coefficients), na.rm = TRUE) > max.coef) converged <- FALSE
-  if(coxph.model$iter >= 20) FALSE
-  return(converged)
+# Check if none of the coefficients are not too large. Return TRUE if it suffices
+convergence.check <- function(coxph.model, max.coef){
+  if(coxph.model$iter >= 20) return(FALSE)
+  if(max(abs(coxph.model$coefficients), na.rm = TRUE) > max.coef) return(FALSE)
+  return(TRUE)
 }
 
 
+
+# This function is interesting, it aims to calculate an optimal number of batches to divide over the workers.
+# The primary goal is to minimize the maximum number of covariates in one batch in one worker, by providing an equal spread.
+# Think of it as a box, with 3 dimensions: no.workers and no.iterations at the base and the batchsize as height. We want
+# to minimize the iterations first, then the batchsize, and finally provide an equal spread.
+#
+# This function is reused by both the first and second stage, and can optimize both stages with the same algorithm.
+# For the first stage, this should be quite obvious, as it is written to optimalize the case where all batches
+# are of equal size, which should be the case in the first stage.
+# For the second stage, this is not the case. Consider 6 covariates for 3 workers. We test for interations, so we
+# get a triangular matrix of covariate pairs that need to be tested. The optimal configuration for this is:
+# x  123456
+# 1: @@@@@@
+# 2:  #####
+# 3:   $$$$
+# 4:    $$$
+# 5:     ##
+# 6:      @
+# where each symbol represents one of the workers. This way every worker gets 7 interations to be tested, and
+# the assignment is done automaticaly right by using the first-in last-out principle. The $ worker is namely
+# expected to finish first with all interations between 3.
+# So, by inputting the no.covariates divided by 2, we can still obtain an optimal configuration (odd numbers work similar). Also, we divide
+# max.batchsize by 2, to account for the memory usage: we do after all keep twice as much covariates in memory in the second stage.
+#
+# Returns a list, containing the optimal.batchsize, the optimal.no.batches and last.batchsizes, which is an array of length no.workers of integers denoting
+# the number of covariates in the batches of the last iteration.
 optimal.batch.configuration <- function(no.covariates, max.batchsize, no.workers = 1){
-  intermediate.no.batches <- min(ceiling(no.covariates/no.workers), max.batchsize)
-  intermediate.batchsize <- ceiling(no.covariates/intermediate.no.batches)
-  final.iters <- ceiling(intermediate.batchsize/no.workers)
-  final.no.batches <- final.iters*no.workers
-  final.batchsize <- ceiling(no.covariates/final.no.batches)
 
-  last.iter.covs <- no.covariates - final.batchsize*(final.iters-1)*no.workers
-  last.batchsize <- ceiling(last.iter.covs/no.workers)
-  last.no.full.batches <- ceiling(last.iter.covs/last.batchsize - 1)
-  last.partial.batch <- last.iter.covs - last.batchsize*last.no.full.batches
-  last.batchsizes <- c(rep(last.batchsize, last.no.full.batches), last.partial.batch)
-  #add trailing 0's
-  last.batchsizes <- c(last.batchsizes, rep(0, no.workers - length(last.batchsizes)))
+  # Firstly, we calculate the least required iterations:
+  (least.req.iterations = ceiling( no.covariates / (max.batchsize * no.workers) ))
+  # Next we aim to minimize the maximum batchsize. To do so, we calculate the
+  # lowest batchsize that would suffice:
+  (minmax.batchsize = ceiling(no.covariates / (no.workers * least.req.iterations)))
 
-  return(list(optimal.batchsize = final.batchsize, optimal.no.batches = final.no.batches,
-              last.batchsizes = last.batchsizes))
+  # Lastly, we need to distribute the remaining covariates over the batches in the last iteration. This is the hardest part.
+  # First, how many remaining covariates:
+  (no.remaining.covs = no.covariates - (least.req.iterations-1) * minmax.batchsize * no.workers)
+
+  # Next up, equally spread these across an array of length no.workers, ignoring overflow for now:
+  (last.iter.batchsizes.base = rep(floor(no.remaining.covs / no.workers), no.workers))
+  # Now, how many overflow covariates did we ignore:
+  (no.overflow.covs = no.remaining.covs - sum(last.iter.batchsizes.base))
+  # And lastly we create another array, which consists of no.overflow.covs 1's and rest 0, of length no.workers:
+  (last.iter.batchsizes.overflow = c(rep(1, no.overflow.covs), rep(0, no.workers - no.overflow.covs)))
+  # and sum them up:
+  (last.iter.batchsizes = last.iter.batchsizes.base + last.iter.batchsizes.overflow)
+
+  (list(optimal.batchsize = minmax.batchsize, optimal.no.batches = least.req.iterations * no.workers,
+        last.batchsizes = last.iter.batchsizes))
+  (matrix(c(rep(minmax.batchsize, (least.req.iterations-1)*no.workers), last.iter.batchsizes), ncol = no.workers, byrow = TRUE))
+  return(list(optimal.batchsize = minmax.batchsize, optimal.no.batches = least.req.iterations * no.workers,
+              last.batchsizes = last.iter.batchsizes))
 }
+
 
 singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
                                      progress = 50, max.coef = 5, upper.bound.correlation = 0.95, snps.are.named = FALSE,
-                                     updatefile = "", ...){
+                                     updatefile = "", lower.bound.variance = 0.1, ...){
+  # first step is the first stage, which is handled in another function
   first.stage.result <-
     firststagecoxph(
       survival.dataset,
@@ -409,15 +474,12 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
       max.coef,
       snps.are.named = snps.are.named,
       updatefile = updatefile,
+      lower.bound.variance = lower.bound.variance,
       ...
     )
-  if(snps.are.named) {
-    names(first.stage.result) = dimnames(covariate.matrix)[[2]]
-  } else {
-    names(first.stage.result) = 1:dim(covariate.matrix)[2]
-  }
-  first.stage.rejections <- (first.stage.result < first.stage.threshold)
 
+  # make an index-list of the rejected covariates
+  first.stage.rejections <- (first.stage.result < first.stage.threshold)
   passed.indices <- which(first.stage.rejections == TRUE)
   amount.rejections <- max(sum(first.stage.rejections, na.rm = TRUE), 0, na.rm = TRUE)
 
@@ -426,7 +488,8 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
   if(amount.rejections < 2) return(list(second.stage.sparse.matrix = NA, passed.indices = passed.indices,
                                         first.stage.p.values = first.stage.result))
 
-  relevant.indices <- utils::combn(passed.indices, 2)
+  # As a first step of the second stage, we want to initialize the output matrix,
+  # this will be part of the return value
   output.matrix <- matrix(NA, nrow = amount.rejections, ncol = amount.rejections)
   if(snps.are.named) {
     dimnames(output.matrix) <- list(dimnames(covariate.matrix)[[2]][passed.indices], NULL)
@@ -434,20 +497,25 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
     dimnames(output.matrix) <- list(passed.indices, NULL)
   }
 
+  #start the loop over the pairs of interactions by iterating over the indices
   start.time.second.stage <- proc.time()[3]
   for (first.index in 1:(amount.rejections-1)){
     for (second.index in (first.index+1):amount.rejections){
+
+      #save the covariates and their indices in separate variables
       index.first.covariate  <- passed.indices[first.index]
       index.second.covariate <- passed.indices[second.index]
       covariate.one <- covariate.matrix[, index.first.covariate]
       covariate.two <- covariate.matrix[, index.second.covariate]
+
+      #perform a prefitting check, to see if their correlation isn't too large
       if(prefitting.check.two(covariate.one, covariate.two, upper.bound.correlation)) {
         withCallingHandlers(
+          # Then fit the model, passing the ... parameters to the coxph() function
           fitted.model <-
             coxph(survival.dataset ~ covariate.one * covariate.two, ...),
           warning = function(w) {
-            #print(w)
-            #print(str(w))
+            #We muffle some warnings that are accounted for, in order to not interrupt the (long) process
             if (grepl("coefficient may be infinite", w$message)) {
               invokeRestart("muffleWarning")
               #An error was given, which is taken into account in convergence.check
@@ -459,13 +527,15 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
             }
           }
         )
+        # We check for convergence, i.e. all coefficients are smaller then max.coef
         if (convergence.check(fitted.model, max.coef)) {
+          #then we save the p-value in the matrix, at the appropriate index
           output.matrix[first.index, second.index] <-
             summary(fitted.model)$coefficients[3, 5]
         }
       }
 
-
+      # If we arrive at an iteration that is a multiple of 'progress', we print the current progress:
       if(max((amount.rejections*(first.index-1) + second.index - first.index*(first.index+1)/2) %% progress == 0, FALSE, na.rm = TRUE)){
         progress.frac <- (amount.rejections*(first.index-1) + second.index - first.index*(first.index+1)/2)/(amount.rejections*(amount.rejections-1)/2)
 
@@ -475,7 +545,7 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
         if(estimated.seconds < 3600) text.estimated.time = paste0(round(estimated.seconds/60, digits = 1), " minutes.")
         if(estimated.seconds < 60)   text.estimated.time = "less than a minute."
         clear.current.line()
-        cat("\rSecond stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
+        cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] Second stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
             "Estimated time until completion: ",
             text.estimated.time, sep = "", file = updatefile)
         utils::flush.console()
@@ -483,6 +553,7 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
     }
   }
 
+  # if the covariates are named, we save them to a separate variable, to be used later
   names.vector <- rep("NA", dim(covariate.matrix)[2])
   if(snps.are.named){
     names.vector[passed.indices] = dimnames(covariate.matrix)[[2]][passed.indices]
@@ -490,7 +561,7 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
     names.vector[passed.indices] = passed.indices
   }
 
-  #output.matrix is a dense matrix, which we need to expand to a sparse matrix with proper indexing
+  #output.matrix is a dense matrix, which we need to expand to a sparse matrix with proper indexing to save on storage
   non.na.indices <- which(!is.na(output.matrix), arr.ind = TRUE)
   second.stage.sparse.matrix <- Matrix::sparseMatrix(i = passed.indices[non.na.indices[,1]],j = passed.indices[non.na.indices[,2]],
                                                      x = as.vector(output.matrix[non.na.indices]), triangular = TRUE,
@@ -505,7 +576,8 @@ singlecore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.s
 
 multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.stage.threshold,
                                      progress = 50, max.coef = 5, updatefile = "", max.batchsize = 1000,
-                                    upper.bound.correlation = 0.95, snps.are.named = FALSE, ...){
+                                    upper.bound.correlation = 0.95, snps.are.named = FALSE,
+                                    lower.bound.variance = 0.1, ...){
   first.stage.list <-
     firststagecoxph.multicore(
       survival.dataset = survival.dataset,
@@ -515,6 +587,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
       max.batchsize = max.batchsize,
       updatefile = updatefile,
       snps.are.named = snps.are.named,
+      lower.bound.variance = lower.bound.variance,
       ...
     )
 
@@ -628,7 +701,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
           if(estimated.seconds < 3600) text.estimated.time = paste0(round(estimated.seconds/60, digits = 1), " minutes.")
           if(estimated.seconds < 60)   text.estimated.time = "less than a minute."
           clear.current.line()
-          cat("\rSecond stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
+          cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] Second stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
               "Estimated time until completion: ",
               text.estimated.time, sep = "", file = updatefile)
           utils::flush.console()
@@ -685,7 +758,7 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
               if(estimated.seconds < 3600) text.estimated.time = paste0(round(estimated.seconds/60, digits = 1), " minutes.")
               if(estimated.seconds < 60)   text.estimated.time = "less than a minute."
               clear.current.line()
-              cat("\rSecond stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
+              cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] Second stage is at ", round(progress.frac*100, digits = 1), "% progress. ",
                   "Estimated time until completion: ",
                   text.estimated.time, sep = "", file = updatefile)
               utils::flush.console()
@@ -722,18 +795,22 @@ multicore.twostagecoxph <- function(survival.dataset, covariate.matrix, first.st
 
 
 firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, max.coef = 5,
-                            snps.are.named = FALSE, updatefile = updatefile, ...){
+                            snps.are.named = FALSE, updatefile = updatefile, lower.bound.variance = 0.1, ...){
+  # In the first stage, we iterate over all covariates and fit a uni-variate coxph model
+  # and save the (raw) p-values of the covariates in a vector to be returned.
   start.time.first.stage <- proc.time()[3]
   p.value.vector <- rep(NA, length = dim(covariate.matrix)[2])
   for(covariate.index in 1:length(p.value.vector)){
+    # For this specific covariate, we fit a coxph model:
     this.covariate <- covariate.matrix[, covariate.index]
-    if(prefitting.check.one(this.covariate)){
+    # We perform a prefitting check on the variance of the covariate
+    if(prefitting.check.one(this.covariate, lower.bound.variance)){
       withCallingHandlers(
+        # Then fit the model, passing the ... parameters to the coxph() function
         fitted.model <-
           coxph(survival.dataset ~ this.covariate, ...),
         warning = function(w) {
-          #print(w)
-          #print(str(w))
+          #We muffle some warnings that are accounted for, in order to proceed with the (long) process
           if (grepl("coefficient may be infinite", w$message)) {
             invokeRestart("muffleWarning")
             #An error was given, which is taken into account in convergence.check
@@ -745,16 +822,19 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
           }
         }
       )
+      # We check for convergence, i.e. all coefficients are smaller then max.coef
       if (convergence.check(fitted.model, max.coef)) {
-      p.value.vector[covariate.index] <-
-        summary(fitted.model)$coefficients[1, 5]
+        #then we save the p-value in the vector, at the appropriate index
+        p.value.vector[covariate.index] <-
+          summary(fitted.model)$coefficients[1, 5]
       }
     }
 
+    # If we arrive at a multiple of 'progress', we print the current progress:
     if(max(covariate.index %% progress == 0, FALSE, na.rm = TRUE)){
       progress.frac <- covariate.index/length(p.value.vector)
       clear.current.line()
-      cat("\r", "First stage is at ", round(progress.frac*100, digits = 0), "% progress. ",
+      cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] First stage is at ", round(progress.frac*100, digits = 0), "% progress. ",
           "Estimated time until completion first stage: ",
           round((1-progress.frac)/progress.frac*(proc.time()[3] - start.time.first.stage)/60, digits = 1),
           " minutes. ", sep = "", file = updatefile)
@@ -762,11 +842,13 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
     }
   }
 
+  # If we're done with all the covariates, we print that we are (if outputs are not disabled):
   if(progress != 0){
     clear.current.line()
-    cat("\rFirst stage complete. Commencing second stage. ", file = updatefile)
+    cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] First stage complete. Commencing second stage. ", file = updatefile)
   }
 
+  #and we assign the names of the covariates to the constructed vector:
   if(snps.are.named) {
     names(p.value.vector) <- dimnames(covariate.matrix)[[2]]
   } else names(p.value.vector) <- 1:length(p.value.vector)
@@ -777,23 +859,33 @@ firststagecoxph <- function(survival.dataset, covariate.matrix, progress = 50, m
 
 firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progress = 50,
                                       max.coef = 5, max.batchsize = 1000, updatefile = "",
-                                      snps.are.named = FALSE, ...){
+                                      snps.are.named = FALSE, lower.bound.variance = 0.1, ...){
   start.time.first.stage <- proc.time()[3]
 
+  #before we start the parallel process, we want to divide the workload as evenly as possible
+  # For this we have the helperfunction optimal.batch.configuration:
   no.covariates <- dim(covariate.matrix)[2]
   no.workers <- foreach::getDoParWorkers()
   optimal.batchconf <- optimal.batch.configuration(no.covariates, max.batchsize, no.workers)
+  #this returns a list of the total number of batches, the optimal maximum size of the batch,
+  # and the sizes of the batches in the last iteration, in case the covariates can't be spread
+  # spread perfectly equal.
 
+  # We process the outcome into batches
   optimal.batchsize <- optimal.batchconf$optimal.batchsize
   no.processes <- optimal.batchconf$optimal.no.batches
   batchsizes.vector <- c(rep(optimal.batchsize, no.processes - no.workers),
                          optimal.batchconf$last.batchsizes)
+  #then we ply it into a matrix, from which the parallel workers can obtain their
+  # assigned indices
   matrix.indices.processes <- matrix(c(seq_len(sum(batchsizes.vector)),
                                        rep(NA, no.workers*max(batchsizes.vector) -
                                              sum(optimal.batchconf$last.batchsizes))),
                                      ncol = length(batchsizes.vector),
                                      nrow = optimal.batchsize)
 
+  # we start the foreach loop, which will return a list, to account for the non-sequential
+  # operation. Also, foreach() can't handle named vectors, or I couldn't make it work
   process.index <- NULL #suppressing a note from devtools::check()
   p.value.list <- foreach::foreach(process.index = seq_len(no.processes),
                                      .packages = c("survival", "utils"),
@@ -801,20 +893,26 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
                                                  "clear.current.line"),
                                      .combine = function(x,y) mapply(c, x, y, SIMPLIFY = FALSE),
                                      .inorder = FALSE) %dopar% {
+    # Note: the foreach loop iterates over the batches, which consist of a subset of covariate (indices)
+    # so we still have a for-loop within the foreach.
+    # We obtain the indices for this batch:
     this.process.indices = (matrix.indices.processes[,process.index])[!is.na(matrix.indices.processes[,process.index])]
+    #if the batch is empty, return NA's:
     if(length(this.process.indices) == 0) return(list(p.values = rep(NA, optimal.batchsize),
                                                       names = rep(NA, optimal.batchsize),
-                                                      og.index = rep(NA, optimal.batchsize))) #if the batch is empty, return NA's
+                                                      og.index = rep(NA, optimal.batchsize)))
+    # if not, we start fitting the coxph models for the assigned covariates:
     this.process.p.values <- rep(NA, length(this.process.indices))
     for(covariate.index in 1:length(this.process.indices)){
       this.covariate <- covariate.matrix[, this.process.indices[covariate.index]]
-      if(prefitting.check.one(this.covariate)){
+      #perform a prefitting check, to check if the covariate has enough variance
+      if(prefitting.check.one(this.covariate, lower.bound.variance)){
         withCallingHandlers(
+          # Then fit the model, passing the ... parameters to the coxph() function
           fitted.model <-
             coxph(survival.dataset ~ this.covariate, ...),
           warning = function(w) {
-            #print(w)
-            #print(str(w))
+            #We muffle some warnings that are accounted for, in order to proceed with the (long) process
             if (grepl("coefficient may be infinite", w$message)) {
               invokeRestart("muffleWarning")
               #An error was given, which is taken into account in convergence.check
@@ -826,17 +924,21 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
             }
           }
         )
+        # We check for convergence, i.e. all coefficients are smaller then max.coef
         if (convergence.check(fitted.model, max.coef)) {
+          #then we save the p-value in the vector, at the appropriate index.
+          #note that this is indexed based on this current batch
           this.process.p.values[covariate.index] <-
             summary(fitted.model)$coefficients[1, 5]
         }
       }
 
+      # If we arrive at a multiple of 'progress', we write the current progress to the updatefile
       if(max(this.process.indices[covariate.index] %% progress == 0, FALSE, na.rm = TRUE)){
         progress.frac <- this.process.indices[covariate.index]/no.covariates
         progress.frac <- (process.index + progress.frac)/(no.processes + 1)
         clear.current.line()
-        cat("\r", "First stage is at ", round(progress.frac*100, digits = 0), "% progress. ",
+        cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] First stage is at ", round(progress.frac*100, digits = 0), "% progress. ",
             "Estimated time until completion first stage: ",
             round((1-progress.frac)/progress.frac*(proc.time()[3] - start.time.first.stage)/60, digits = 1),
             " minutes. ", sep = "", file = updatefile)
@@ -853,12 +955,13 @@ firststagecoxph.multicore <- function(survival.dataset, covariate.matrix, progre
                               names = names(this.process.p.values),
                               og.index = this.process.indices)
 
+    #return the constructed list. Note that these lists will be concatenated by foreach()
     return(this.process.list)
   }
 
   if(progress != 0){
     clear.current.line()
-    cat("\rFirst stage complete. Commencing second stage. ", file = updatefile)
+    cat("\r[", format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", usetz = TRUE), "] First stage complete. Commencing second stage. ", file = updatefile)
   }
   return(p.value.list)
 }

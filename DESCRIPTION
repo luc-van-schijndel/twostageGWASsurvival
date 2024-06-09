@@ -1,6 +1,6 @@
 Package: twostageGWASsurvival
 Title: Implement a Two Stage Method for Detecting Epistasis in GWAS for Survival Data
-Version: 0.2.3.04
+Version: 0.5.0
 Encoding: UTF-8
 Author: Luc van Schijndel [aut, cre],
     Marianne Jonker [aut]
@@ -16,7 +16,7 @@ Description: Using a two stage method, it is possible to reduce the computationa
           method to data obtained for example in a GWAS. It is recommended to perform this method on a
           machine capable of large parallel computations.
 License: GPL (>= 3)
-RoxygenNote: 7.2.1
+RoxygenNote: 7.3.1
 Suggests: 
     devtools,
     doParallel,
