@@ -14,7 +14,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-The package implements a two stage method for finding significant interaction effects within a high-dimensional setting where the covariates outnumber the subjects assuming a Cox proportional hazards model.
+The package implements a two stage method for finding significant interaction effects within a high-dimensional setting where the covariates outnumber the subjects assuming a Cox proportional hazards model. This package is the implementation of the theory described in [this](https://arxiv.org/abs/2406.17466) paper by Jonker et al.
 
 Since the package is not (yet) available on CRAN, installation goes as follows:
 

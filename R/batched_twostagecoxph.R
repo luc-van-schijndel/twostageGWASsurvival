@@ -2,7 +2,8 @@
 #'
 #' An adaptation of \code{\link{twostagecoxph}} where the covariates will be read from multiple files.
 #' This is to alleviate possible memory constrains. The main functionality assumes a parallel back-end
-#' is registered, e.g. using doParallel::registerDoParallel(2).
+#' is registered, e.g. using doParallel::registerDoParallel(2).\cr \cr
+#' The theory supporting the statistical correctness of this function is described in \href{https://arxiv.org/abs/2406.17466}{this} paper by Jonker et al.
 #'
 #' @param survival.dataset The survival dataset describing the outcome.
 #' @param covariate.filepaths The vector of paths of the files containing the covariates. See Details.
@@ -29,7 +30,7 @@
 #'            (\code{covariates_per_file x total_number_of_covariates}) so it is best if enough memory
 #'            is still available after reading the files. \cr \cr
 #'            The function assumes that the object returned by \code{read.function} is a matrix containing
-#'            the covariates with one column per covariate and one row per subject This assumption
+#'            the covariates with one column per covariate and one row per subject. This assumption
 #'            will only be checked once at function start. If the files are not structured the
 #'            same, the results may be unreliable or an error may be thrown. If the \code{read.function}
 #'            assigns names to the columns via the \code{dimnames} attribute, these names will be kept and passed on to the resulting
@@ -94,7 +95,7 @@
 #'         progress itself and therefore highly unreliable if the fraction of processes to workers is
 #'         relatively low, especially on non-Unix like operating systems.
 #'
-#' @seealso \code{\link{foreach}}, \code{\link{print.twostageGWAS}}, \code{\link{twostagecoxph.control}}
+#' @seealso \href{https://arxiv.org/abs/2406.17466}{Paper by Jonker et al.}, \code{\link{foreach}}, \code{\link{print.twostageGWAS}}, \code{\link{twostagecoxph.control}}
 #'
 #' @importFrom survival coxph
 #' @importFrom foreach %dopar%
@@ -112,7 +113,7 @@
 #' #Split the covariate matrix into various files.
 #' number.of.covs <- dim(example_snp_data)[2]
 #' number.of.files <- 6
-#' #500 is not a multiple of 500, so the last file has less covariates than the other ones
+#' # 500 is not a multiple of 6, so the last file has less covariates than the other ones
 #' temp.snpfile.paths <- tempfile(rep("snpfile", number.of.files),
 #'                                tmpdir = tempdir(check = TRUE),
 #'                                fileext = ".txt")

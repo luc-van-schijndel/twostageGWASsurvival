@@ -18,7 +18,7 @@ twostagecoxph(
 \arguments{
 \item{survival.dataset}{The survival dataset describing the outcome.}
 
-\item{covariate.matrix}{The nxp-matrix of covariates of the p covariates of the n patients. The dimensions may be named.}
+\item{covariate.matrix}{The nxp-matrix of covariates of the p covariates of the n patients. Named dimensions are supported.}
 
 \item{first.stage.threshold}{numeric scalar denoting the threshold p-value for the first stage. If a covariate
 is marginally more significant than this threshold, it will be passed on to the second stage.}
@@ -87,10 +87,11 @@ Performs a two stage analysis to find possible interactions influencing the time
 a Cox proportional hazards model. Most useful in cases where the covariates far outnumber the
 subjects, e.g. in a Genome Wide Association Study. The function is based on two stages, wherein
 the first one, all covariates are screened marginally for possible effects. Marginally significant covariates
-are passed on to the second stage, where they are tested in pairs for an interaction effect.
+are passed on to the second stage, where they are tested in pairs for an interaction effect. \cr \cr
+The theory supporting the statistical correctness of this function is described in \href{https://arxiv.org/abs/2406.17466}{this} paper by Jonker et al.
 }
 \details{
-It is shown in  that the two stages are independent of eachother. This results in
+It is shown by \href{https://arxiv.org/abs/2406.17466}{Jonker et al.} that the two stages are independent of each other. This results in
          proper control of rate of type I errors by the multiple hypotheses correction method.
          The power is also increased compared to a naive method, due to the fact that less
          hypotheses are tested in the second stage resulting in a less strict correction.
@@ -141,5 +142,5 @@ print(bar <- twostagecoxph(example_survival_data, example_snp_data[,1:200],
 # it risks the possibility to be too strict and consequently *decreasing* power.
 }
 \seealso{
-\code{\link{foreach}}, \code{\link{print.twostageGWAS}}, \code{\link{twostagecoxph.control}}
+\href{https://arxiv.org/abs/2406.17466}{Paper by Jonker et al.}, \code{\link{foreach}}, \code{\link{print.twostageGWAS}}, \code{\link{twostagecoxph.control}}
 }

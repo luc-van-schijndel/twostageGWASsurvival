@@ -4,10 +4,11 @@
 #' a Cox proportional hazards model. Most useful in cases where the covariates far outnumber the
 #' subjects, e.g. in a Genome Wide Association Study. The function is based on two stages, wherein
 #' the first one, all covariates are screened marginally for possible effects. Marginally significant covariates
-#' are passed on to the second stage, where they are tested in pairs for an interaction effect.
+#' are passed on to the second stage, where they are tested in pairs for an interaction effect. \cr \cr
+#' The theory supporting the statistical correctness of this function is described in \href{https://arxiv.org/abs/2406.17466}{this} paper by Jonker et al.
 #'
 #' @param survival.dataset The survival dataset describing the outcome.
-#' @param covariate.matrix The nxp-matrix of covariates of the p covariates of the n patients. The dimensions may be named.
+#' @param covariate.matrix The nxp-matrix of covariates of the p covariates of the n patients. Named dimensions are supported.
 #' @param first.stage.threshold numeric scalar denoting the threshold p-value for the first stage. If a covariate
 #'          is marginally more significant than this threshold, it will be passed on to the second stage.
 #' @param multiple.hypotheses.correction Correction method, a character string. Passed to \code{\link[stats]{p.adjust}}.
@@ -23,7 +24,7 @@
 #'                  of the two stage method.
 #' @param ... other arguments to be passed to all calls to \code{coxph()} in this function.
 #'
-#' @details It is shown in  that the two stages are independent of eachother. This results in
+#' @details It is shown by \href{https://arxiv.org/abs/2406.17466}{Jonker et al.} that the two stages are independent of each other. This results in
 #'          proper control of rate of type I errors by the multiple hypotheses correction method.
 #'          The power is also increased compared to a naive method, due to the fact that less
 #'          hypotheses are tested in the second stage resulting in a less strict correction.
@@ -85,7 +86,7 @@
 #'         progress itself and therefore highly unreliable if the fraction of processes to workers is
 #'         relatively low, especially on non-Unix like operating systems.
 #'
-#' @seealso \code{\link{foreach}}, \code{\link{print.twostageGWAS}}, \code{\link{twostagecoxph.control}}
+#' @seealso \href{https://arxiv.org/abs/2406.17466}{Paper by Jonker et al.}, \code{\link{foreach}}, \code{\link{print.twostageGWAS}}, \code{\link{twostagecoxph.control}}
 #'
 #' @importFrom survival coxph
 #' @importFrom foreach %dopar%
